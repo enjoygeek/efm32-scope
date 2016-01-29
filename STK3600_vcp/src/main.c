@@ -25,14 +25,14 @@
 #include "em_cmu.h"
 #include "em_gpio.h"
 #include "bsp.h"
-#include "segmentlcd.h"
+#include "../Drivers/segmentlcd.h"
 #include "bsp_trace.h"
 #include "sleep.h"
 
-#include "em_usb.h"
+//#include "em_usb.h"
 //#include "msdd.h"
-#include "cdc.h"
-#include "descriptors.h"
+#include "../Drivers/cdc.h"
+
 
 
 #define STACK_SIZE_FOR_TASK    (configMINIMAL_STACK_SIZE + 10)
@@ -48,10 +48,11 @@ typedef struct
 } LedTaskParams_t;
 
 
-typedef struct
-{
-	SemaphoreHandle_t semRecv;
-} CdcTaskParams_t;
+//typedef struct
+//{
+//	SemaphoreHandle_t semRecv;
+//	SemaphoreHandle_t semTx;
+//} CdcTaskParams_t;
 
 
 /**************************************************************************//**
@@ -60,32 +61,32 @@ typedef struct
  *
  *****************************************************************************/
 
-int SetupCmd(const USB_Setup_TypeDef *setup);
-void StateChangeEvent( USBD_State_TypeDef oldState,
-                       USBD_State_TypeDef newState );
+//int SetupCmd(const USB_Setup_TypeDef *setup);
+//void StateChangeEvent( USBD_State_TypeDef oldState,
+//                       USBD_State_TypeDef newState );
+//
+//static const USBD_Callbacks_TypeDef callbacks =
+//{
+//  .usbReset        = NULL,
+//  .usbStateChange  = StateChangeEvent,
+//  .setupCmd        = SetupCmd,
+//  .isSelfPowered   = NULL,
+//  .sofInt          = NULL
+//};
+//
+//const USBD_Init_TypeDef usbInitStruct =
+//{
+//  .deviceDescriptor    = &USBDESC_deviceDesc,
+//  .configDescriptor    = USBDESC_configDesc,
+//  .stringDescriptors   = USBDESC_strings,
+//  .numberOfStrings     = sizeof(USBDESC_strings)/sizeof(void*),
+//  .callbacks           = &callbacks,
+//  .bufferingMultiplier = USBDESC_bufferingMultiplier,
+//  .reserved            = 0
+//};
 
-static const USBD_Callbacks_TypeDef callbacks =
-{
-  .usbReset        = NULL,
-  .usbStateChange  = StateChangeEvent,
-  .setupCmd        = SetupCmd,
-  .isSelfPowered   = NULL,
-  .sofInt          = NULL
-};
-
-const USBD_Init_TypeDef usbInitStruct =
-{
-  .deviceDescriptor    = &USBDESC_deviceDesc,
-  .configDescriptor    = USBDESC_configDesc,
-  .stringDescriptors   = USBDESC_strings,
-  .numberOfStrings     = sizeof(USBDESC_strings)/sizeof(void*),
-  .callbacks           = &callbacks,
-  .bufferingMultiplier = USBDESC_bufferingMultiplier,
-  .reserved            = 0
-};
-
-SemaphoreHandle_t semRecv;
-SemaphoreHandle_t semTx;
+//SemaphoreHandle_t semRecv;
+//SemaphoreHandle_t semTx;
 
 /**************************************************************************//**
  * @brief Simple task which is blinking led
@@ -106,38 +107,38 @@ static void LedTask(void *pParameters)
   }
 }
 
-extern const uint8_t  *usbRxBuffer[  2 ];
-extern int            usbRxIndex, usbBytesReceived;
-
-static const char *txBuffer[256];
-static int txLen;
-static void UsbCDCTask(void *pParameters)
-{
-	txLen = 0;
-
-	CdcTaskParams_t *pData = (CdcTaskParams_t*) pParameters;
-	CDC_Init();                   /* Initialize the communication class device. */
-
-
-	/* Initialize and start USB device stack. */
-	int ret = USBD_Init(&usbInitStruct);
-
-	/*
-	* When using a debugger it is practical to uncomment the following three
-	* lines to force host to re-enumerate the device.
-	*/
-	USBD_Disconnect();
-	USBTIMER_DelayMs( 1000 );
-	USBD_Connect();
-	for(;;)
-	{
-		xSemaphoreTake(semTx, portMAX_DELAY);
-		if (txLen > 0)
-		{
-			USBD_Write(CDC_EP_DATA_IN, txBuffer, txLen, NULL);
-		}
-	}
-}
+//extern const uint8_t  *usbRxBuffer[  2 ];
+//extern int            usbRxIndex, usbBytesReceived;
+//
+//static const char *txBuffer[256];
+//static int txLen;
+//static void UsbCDCTask(void *pParameters)
+//{
+//	txLen = 0;
+//
+//	CdcTaskParams_t *pData = (CdcTaskParams_t*) pParameters;
+//	CDC_Init();                   /* Initialize the communication class device. */
+//
+//
+//	/* Initialize and start USB device stack. */
+//	int ret = USBD_Init(&usbInitStruct);
+//
+//	/*
+//	* When using a debugger it is practical to uncomment the following three
+//	* lines to force host to re-enumerate the device.
+//	*/
+//	USBD_Disconnect();
+//	USBTIMER_DelayMs( 1000 );
+//	USBD_Connect();
+//	for(;;)
+//	{
+//		xSemaphoreTake(semTx, portMAX_DELAY);
+//		if (txLen > 0)
+//		{
+//			USBD_Write(CDC_EP_DATA_IN, txBuffer, txLen, NULL);
+//		}
+//	}
+//}
 
 
 int RETARGET_ReadChar(void)
@@ -145,17 +146,18 @@ int RETARGET_ReadChar(void)
 	return 0;
 }
 
-int _write(int file, const char *ptr, int len)
-{
-	memcpy(txBuffer, ptr, len);
-	txLen = len;
-	xSemaphoreGive(semTx);
-	return len;
-}
+//int _write(int file, const char *ptr, int len)
+//{
+//	memcpy(txBuffer, ptr, len);
+//	txLen = len;
+//	xSemaphoreGive(semTx);
+//	return len;
+//}
 
 /**************************************************************************//**
  * @brief main - the entrypoint after reset.
  *****************************************************************************/
+extern void UsbCDCTask(void *pParameters);
 int main( void )
 {
 	CHIP_Init();
@@ -185,12 +187,11 @@ int main( void )
    static LedTaskParams_t parametersToTask2 = { 500 / portTICK_RATE_MS, 1 };
 
    CdcTaskParams_t parametersToCdc;
-   semRecv = xSemaphoreCreateCounting(1000, 0);
-   semTx = xSemaphoreCreateCounting(1000, 0);
-   parametersToCdc.semRecv = semRecv;
+   parametersToCdc.semRecv = xSemaphoreCreateCounting(1000, 0);
+   parametersToCdc.semTx = xSemaphoreCreateCounting(1000, 0);
 
 
-   setvbuf(stdout, NULL, _IOLBF, 16);
+//   setvbuf(stdout, NULL, _IOLBF, 16);
    /*Create two task for blinking leds*/
 //   xTaskCreate( LedTask, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
    xTaskCreate( LedTask, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
@@ -199,43 +200,4 @@ int main( void )
 
    NVIC_SetPriority(USB_IRQn, 7);
    vTaskStartScheduler();
-}
-
-/**************************************************************************//**
- * @brief
- *   Called whenever a USB setup command is received.
- *
- * @param[in] setup
- *   Pointer to an USB setup packet.
- *
- * @return
- *   An appropriate status/error code. See USB_Status_TypeDef.
- *****************************************************************************/
-int SetupCmd(const USB_Setup_TypeDef *setup)
-{
-  int retVal;
-
-  retVal = CDC_SetupCmd( setup );
-
-  return retVal;
-}
-
-/**************************************************************************//**
- * @brief
- *   Called whenever the USB device has changed its device state.
- *
- * @param[in] oldState
- *   The device USB state just leaved. See USBD_State_TypeDef.
- *
- * @param[in] newState
- *   New (the current) USB device state. See USBD_State_TypeDef.
- *****************************************************************************/
-void StateChangeEvent( USBD_State_TypeDef oldState,
-                       USBD_State_TypeDef newState )
-{
-  /* Call device StateChange event handlers for all relevant functions within
-     the composite device. */
-
-//  MSDD_StateChangeEvent( oldState, newState );
-  CDC_StateChangeEvent(  oldState, newState );
 }

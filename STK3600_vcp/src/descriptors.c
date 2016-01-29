@@ -24,7 +24,7 @@ const USB_DeviceDescriptor_TypeDef USBDESC_deviceDesc __attribute__ ((aligned(4)
   .bDeviceSubClass    = USB_CLASS_MISC_COMMON_SUBCLASS,
   .bDeviceProtocol    = USB_CLASS_MISC_IAD_PROTOCOL,
   .bMaxPacketSize0    = USB_FS_CTRL_EP_MAXSIZE,
-  .idVendor           = 0x10C4,
+  .idVendor           = 0x10CE,
   .idProduct          = 0x0008,
   .bcdDevice          = 0x0000,
   .iManufacturer      = 1,
@@ -63,47 +63,6 @@ const uint8_t USBDESC_configDesc[] __attribute__ ((aligned(4)))=
   CONFIG_DESC_BM_RESERVED_D7 |    /* bmAttrib: Self powered            */
   CONFIG_DESC_BM_SELFPOWERED,
   CONFIG_DESC_MAXPOWER_mA( 100 ), /* bMaxPower: 100 mA                 */
-
-//  /*** VUD (Vendor Unique Device) Function ***/
-//  /*** Interface descriptor ***/
-//  USB_INTERFACE_DESCSIZE, /* bLength               */
-//  USB_INTERFACE_DESCRIPTOR,/* bDescriptorType      */
-//  VUD_INTERFACE_NO,       /* bInterfaceNumber      */
-//  0,                      /* bAlternateSetting     */
-//  VUD_NUM_EP_USED,        /* bNumEndpoints         */
-//  0xFF,                   /* bInterfaceClass       */
-//  0,                      /* bInterfaceSubClass    */
-//  0,                      /* bInterfaceProtocol    */
-//  0,                      /* iInterface            */
-
-//  /*** MSD Function         ***/
-//  /*** Interface descriptor ***/
-//  USB_INTERFACE_DESCSIZE, /* bLength               */
-//  USB_INTERFACE_DESCRIPTOR,/* bDescriptorType      */
-//  MSD_INTERFACE_NO,       /* bInterfaceNumber      */
-//  0,                      /* bAlternateSetting     */
-//  MSD_NUM_EP_USED,        /* bNumEndpoints         */
-//  USB_CLASS_MSD,          /* bInterfaceClass       */
-//  USB_CLASS_MSD_SCSI_CMDSET, /* bInterfaceSubClass */
-//  USB_CLASS_MSD_BOT_TRANSPORT,/* bInterfaceProtocol*/
-//  0,                      /* iInterface            */
-//
-//  /*** Endpoint descriptors ***/
-//  USB_ENDPOINT_DESCSIZE,  /* bLength               */
-//  USB_ENDPOINT_DESCRIPTOR,/* bDescriptorType       */
-//  MSD_BULK_OUT,           /* bEndpointAddress (OUT)*/
-//  USB_EPTYPE_BULK,        /* bmAttributes          */
-//  USB_FS_BULK_EP_MAXSIZE, /* wMaxPacketSize (LSB)  */
-//  0,                      /* wMaxPacketSize (MSB)  */
-//  0,                      /* bInterval             */
-//
-//  USB_ENDPOINT_DESCSIZE,  /* bLength               */
-//  USB_ENDPOINT_DESCRIPTOR,/* bDescriptorType       */
-//  MSD_BULK_IN,            /* bEndpointAddress (IN) */
-//  USB_EPTYPE_BULK,        /* bmAttributes          */
-//  USB_FS_BULK_EP_MAXSIZE, /* wMaxPacketSize (LSB)  */
-//  0,                      /* wMaxPacketSize (MSB)  */
-//  0,                      /* bInterval             */
 
   /*** CDC Function                                                 ***/
   /*** IAD (Interface Association Descriptor) for the CDC function  ***/
@@ -145,7 +104,7 @@ const uint8_t USBDESC_configDesc[] __attribute__ ((aligned(4)))=
   USB_CDC_ACM_FND_DESCSIZE, /* bFunctionLength     */
   USB_CS_INTERFACE_DESCRIPTOR, /* bDescriptorType  */
   USB_CLASS_CDC_ACMFN,    /* bDescriptorSubtype    */
-  0x02,                   /* bmCapabilities        */
+  0x00,                   /* bmCapabilities        */
   /* The capabilities that this configuration supports:                   */
   /* D7..D4: RESERVED (Reset to zero)                                     */
   /* D3: 1 - Device supports the notification Network_Connection.         */
@@ -202,14 +161,10 @@ const uint8_t USBDESC_configDesc[] __attribute__ ((aligned(4)))=
 };
 
 STATIC_CONST_STRING_DESC_LANGID( langID, 0x04, 0x09 );
-STATIC_CONST_STRING_DESC( iManufacturer, 'S','i','l','i','c','o','n',' ','L', \
-                                         'a','b','o','r','a','t','o','r','i', \
-                                         'e','s',' ','I','n','c','.' );
-STATIC_CONST_STRING_DESC( iProduct     , 'E','F','M','3','2',' ','U','S','B', \
-                                         ' ','C','o','m','p','o','s','i','t', \
-                                         'e',' ','D','e','v','i', 'c','e' );
-STATIC_CONST_STRING_DESC( iSerialNumber, '0','0','0','0','1','2',             \
-                                         '3','4','5','6','7','8' );
+STATIC_CONST_STRING_DESC( iManufacturer, u"Silicon Laboratories Inc.");
+STATIC_CONST_STRING_DESC( iProduct     , u"EFM32 USB Composite Device");
+STATIC_CONST_STRING_DESC( iSerialNumber, u"000012345678");
+
 
 const void * const USBDESC_strings[] =
 {
@@ -224,6 +179,5 @@ const void * const USBDESC_strings[] =
 const uint8_t USBDESC_bufferingMultiplier[ NUM_EP_USED + 1 ] =
 {
   1,        /* Common Control endpoint.           */
-//  2, 2,     /* MSD bulk endpoints.                */
   1, 2, 2   /* CDC interrupt and bulk endpoints.  */
 };

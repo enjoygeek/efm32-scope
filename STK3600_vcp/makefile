@@ -53,11 +53,12 @@ INCLUDE_DIRS = -I./src \
 			   -I$(SDK_PATH)/Device/SiliconLabs/EFM32LG/Include \
 			   -I$(SDK_PATH)/kits/common/bsp \
 			   -I$(SDK_PATH)/kits/EFM32LG_STK3600/config \
-			   -I$(SDK_PATH)/kits/common/drivers \
 			   -I$(SDK_PATH)/FreeRTOS/Source/include \
 			   -I$(SDK_PATH)/FreeRTOS/Source/portable/GCC/ARM_CM3
 			   
-CFLAGS := -g -gdwarf-2 -mcpu=cortex-m3 -mthumb '-DDEBUG_EFM_USER=1' '-DEFM32LG990F256=1' '-DDEBUG=1' -O0 -Wall -c -fmessage-length=0 -mno-sched-prolog -fno-builtin -ffunction-sections -fdata-sections -std=c99
+#-I$(SDK_PATH)/kits/common/drivers \			   
+			   
+CFLAGS := -g -gdwarf-2 -mcpu=cortex-m3 -mthumb '-DDEBUG_EFM_USER=1' '-DEFM32LG990F256=1' '-DDEBUG=1' -O0 -Wall -c -fmessage-length=0 -mno-sched-prolog -fno-builtin -ffunction-sections -fdata-sections -std=c11
 CFLAGS += $(INCLUDE_DIRS)
 
 %.o: %.c 

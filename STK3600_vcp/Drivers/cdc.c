@@ -23,6 +23,7 @@
 #include "bsp.h"
 #include "dmactrl.h"
 #include "cdc.h"
+#include "descriptors.h"
 
 #include "../src/FreeRTOSConfig.h"
 #include "FreeRTOS.h"
@@ -146,16 +147,39 @@ STATIC_UBUF(usbRxBuffer0,  CDC_USB_RX_BUF_SIZ);   /* USB receive buffers.   */
 STATIC_UBUF(usbRxBuffer1,  CDC_USB_RX_BUF_SIZ);
 
 const uint8_t  *usbRxBuffer[  2 ] = { usbRxBuffer0, usbRxBuffer1 };
-//static const uint8_t  *uartRxBuffer[ 2 ] = { uartRxBuffer0, uartRxBuffer1 };
 
-int            usbRxIndex, usbBytesReceived;
-static int            uartRxIndex, uartRxCount;
-static int            LastUsbTxCnt;
+static int            usbRxIndex = 0;
 
-static bool           dmaRxCompleted;
-static bool           usbRxActive, dmaTxActive;
-static bool           usbTxActive, dmaRxActive;
+static char usbTxBuffers[128] __attribute__((aligned(4)));
+static int txLen;
 
+int SetupCmd(const USB_Setup_TypeDef *setup);
+void StateChangeEvent( USBD_State_TypeDef oldState,
+                       USBD_State_TypeDef newState );
+
+static const USBD_Callbacks_TypeDef callbacks =
+{
+  .usbReset        = NULL,
+  .usbStateChange  = StateChangeEvent,
+  .setupCmd        = SetupCmd,
+  .isSelfPowered   = NULL,
+  .sofInt          = NULL
+};
+
+const USBD_Init_TypeDef usbInitStruct =
+{
+  .deviceDescriptor    = &USBDESC_deviceDesc,
+  .configDescriptor    = USBDESC_configDesc,
+  .stringDescriptors   = USBDESC_strings,
+  .numberOfStrings     = sizeof(USBDESC_strings)/sizeof(void*),
+  .callbacks           = &callbacks,
+  .bufferingMultiplier = USBDESC_bufferingMultiplier,
+  .reserved            = 0
+};
+
+
+static SemaphoreHandle_t semTx;
+static SemaphoreHandle_t semRecv;
 /** @endcond */
 
 /**************************************************************************//**
@@ -163,7 +187,48 @@ static bool           usbTxActive, dmaRxActive;
  *****************************************************************************/
 void CDC_Init( void )
 {
+	setvbuf(stdout, usbTxBuffers, _IOLBF, 128);
 }
+
+int _write(int file, const char *ptr, int len)
+{
+//	memcpy(txBuffer, ptr, len);
+	txLen = len;
+	xSemaphoreGive(semTx);
+	return len;
+}
+
+void UsbCDCTask(void *pParameters)
+{
+	CdcTaskParams_t *pData = (CdcTaskParams_t*) pParameters;
+
+	txLen = 0;
+	semTx = pData->semTx;
+	semRecv = pData->semRecv;
+
+	CDC_Init();                   /* Initialize the communication class device. */
+
+
+	/* Initialize and start USB device stack. */
+	int ret = USBD_Init(&usbInitStruct);
+
+	/*
+	* When using a debugger it is practical to uncomment the following three
+	* lines to force host to re-enumerate the device.
+	*/
+	USBD_Disconnect();
+	USBTIMER_DelayMs( 1000 );
+	USBD_Connect();
+	for(;;)
+	{
+		xSemaphoreTake(pData->semTx, portMAX_DELAY);
+		if (txLen > 0)
+		{
+			USBD_Write(CDC_EP_DATA_IN, usbTxBuffers, txLen, NULL);
+		}
+	}
+}
+
 
 /**************************************************************************//**
  * @brief
@@ -245,8 +310,6 @@ void CDC_StateChangeEvent( USBD_State_TypeDef oldState,
     }
 
     /* Start receiving data from USB host. */
-    usbRxIndex  = 0;
-    usbRxActive = true;
     USBD_Read(CDC_EP_DATA_OUT, (void*) usbRxBuffer[ usbRxIndex ],
               CDC_USB_RX_BUF_SIZ, UsbDataReceived);
   }
@@ -269,7 +332,7 @@ void CDC_StateChangeEvent( USBD_State_TypeDef oldState,
  *
  * @return USB_STATUS_OK.
  *****************************************************************************/
-extern SemaphoreHandle_t semRecv;
+
 static int UsbDataReceived(USB_Status_TypeDef status,
                            uint32_t xferred,
                            uint32_t remaining)
@@ -306,19 +369,6 @@ static int UsbDataTransmitted(USB_Status_TypeDef status,
 
   if (status == USB_STATUS_OK)
   {
-    if (!dmaRxActive)
-    {
-      /* dmaRxActive = false means that a new UART Rx DMA can be started. */
-
-//      USBD_Write(CDC_EP_DATA_IN, (void*) uartRxBuffer[ uartRxIndex ^ 1],
-//                 uartRxCount, UsbDataTransmitted);
-      LastUsbTxCnt = uartRxCount;
-    }
-    else
-    {
-      /* The UART receive DMA callback function will start a new DMA. */
-      usbTxActive = false;
-    }
   }
   return USB_STATUS_OK;
 }
@@ -339,70 +389,52 @@ static int LineCodingReceived(USB_Status_TypeDef status,
                               uint32_t xferred,
                               uint32_t remaining)
 {
-  uint32_t frame = 0;
   (void) remaining;
 
   /* We have received new serial port communication settings from USB host. */
   if ((status == USB_STATUS_OK) && (xferred == 7))
   {
-    /* Check bDataBits, valid values are: 5, 6, 7, 8 or 16 bits. */
-    if (cdcLineCoding.bDataBits == 5)
-      frame |= USART_FRAME_DATABITS_FIVE;
-
-    else if (cdcLineCoding.bDataBits == 6)
-      frame |= USART_FRAME_DATABITS_SIX;
-
-    else if (cdcLineCoding.bDataBits == 7)
-      frame |= USART_FRAME_DATABITS_SEVEN;
-
-    else if (cdcLineCoding.bDataBits == 8)
-      frame |= USART_FRAME_DATABITS_EIGHT;
-
-    else if (cdcLineCoding.bDataBits == 16)
-      frame |= USART_FRAME_DATABITS_SIXTEEN;
-
-    else
-      return USB_STATUS_REQ_ERR;
-
-    /* Check bParityType, valid values are: 0=None 1=Odd 2=Even 3=Mark 4=Space  */
-    if (cdcLineCoding.bParityType == 0)
-      frame |= USART_FRAME_PARITY_NONE;
-
-    else if (cdcLineCoding.bParityType == 1)
-      frame |= USART_FRAME_PARITY_ODD;
-
-    else if (cdcLineCoding.bParityType == 2)
-      frame |= USART_FRAME_PARITY_EVEN;
-
-    else if (cdcLineCoding.bParityType == 3)
-      return USB_STATUS_REQ_ERR;
-
-    else if (cdcLineCoding.bParityType == 4)
-      return USB_STATUS_REQ_ERR;
-
-    else
-      return USB_STATUS_REQ_ERR;
-
-    /* Check bCharFormat, valid values are: 0=1 1=1.5 2=2 stop bits */
-    if (cdcLineCoding.bCharFormat == 0)
-      frame |= USART_FRAME_STOPBITS_ONE;
-
-    else if (cdcLineCoding.bCharFormat == 1)
-      frame |= USART_FRAME_STOPBITS_ONEANDAHALF;
-
-    else if (cdcLineCoding.bCharFormat == 2)
-      frame |= USART_FRAME_STOPBITS_TWO;
-
-    else
-      return USB_STATUS_REQ_ERR;
-
-//    /* Program new UART baudrate etc. */
-//    CDC_UART->FRAME = frame;
-//    USART_BaudrateAsyncSet(CDC_UART, 0, cdcLineCoding.dwDTERate, usartOVS16);
-
     return USB_STATUS_OK;
   }
   return USB_STATUS_REQ_ERR;
+}
+
+/**************************************************************************//**
+ * @brief
+ *   Called whenever a USB setup command is received.
+ *
+ * @param[in] setup
+ *   Pointer to an USB setup packet.
+ *
+ * @return
+ *   An appropriate status/error code. See USB_Status_TypeDef.
+ *****************************************************************************/
+int SetupCmd(const USB_Setup_TypeDef *setup)
+{
+  int retVal;
+
+  retVal = CDC_SetupCmd( setup );
+
+  return retVal;
+}
+
+/**************************************************************************//**
+ * @brief
+ *   Called whenever the USB device has changed its device state.
+ *
+ * @param[in] oldState
+ *   The device USB state just leaved. See USBD_State_TypeDef.
+ *
+ * @param[in] newState
+ *   New (the current) USB device state. See USBD_State_TypeDef.
+ *****************************************************************************/
+void StateChangeEvent( USBD_State_TypeDef oldState,
+                       USBD_State_TypeDef newState )
+{
+  /* Call device StateChange event handlers for all relevant functions within
+     the composite device. */
+
+  CDC_StateChangeEvent(  oldState, newState );
 }
 
 /** @endcond */
