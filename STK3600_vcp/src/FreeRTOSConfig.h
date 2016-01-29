@@ -94,7 +94,7 @@ extern "C" {
 /* Available options when configUSE_TICKLESS_IDLE set to 1 
  * or configUSE_SLEEP_MODE_IN_IDLE set to 1 :
  * 1 - EM1, 2 - EM2, 3 - EM3, timer in EM3 is not very accurate*/
-#define configSLEEP_MODE           ( 2 )
+#define configSLEEP_MODE           ( 1 )
 /* Definition used only if configUSE_TICKLESS_IDLE == 0 */
 #define configUSE_SLEEP_MODE_IN_IDLE       ( 1 )
 
@@ -136,7 +136,7 @@ extern "C" {
 #define configIDLE_SHOULD_YIELD                   ( 0 )
 #define configUSE_MUTEXES                         ( 1 )
 #define configUSE_RECURSIVE_MUTEXES               ( 0 )
-#define configUSE_COUNTING_SEMAPHORES             ( 0 )
+#define configUSE_COUNTING_SEMAPHORES             ( 1 )
 #define configUSE_ALTERNATIVE_API                 ( 0 )/* Deprecated! */
 #define configQUEUE_REGISTRY_SIZE                 ( 10 )
 #define configUSE_QUEUE_SETS                      ( 0 )

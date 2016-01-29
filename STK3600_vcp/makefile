@@ -24,11 +24,12 @@ C_SRC += $(SDK_PATH)/usb/src/em_usbd.c \
 		 $(SDK_PATH)/usb/src/em_usbdep.c \
 		 $(SDK_PATH)/usb/src/em_usbdch9.c \
 		 $(SDK_PATH)/usb/src/em_usbtimer.c \
-		 
+		 	 
 C_SRC += ./BSP/bsp_trace.c \
 		 ./BSP/bsp_stk_leds.c
 		 	 
 C_SRC += ./src/main.c \
+		 ./src/retargetio.c \
 		 ./src/descriptors.c \
 		 ./src/low_power_tick_management.c \
 		 ./Drivers/cdc.c \

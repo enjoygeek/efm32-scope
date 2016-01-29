@@ -19,9 +19,15 @@
 #include "em_gpio.h"
 #include "em_usart.h"
 #include "em_usb.h"
+#include "core_cm3.h"
 #include "bsp.h"
 #include "dmactrl.h"
 #include "cdc.h"
+
+#include "../src/FreeRTOSConfig.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
 
 /**************************************************************************//**
  * @addtogroup Cdc
@@ -139,10 +145,10 @@ EFM32_PACK_END()
 STATIC_UBUF(usbRxBuffer0,  CDC_USB_RX_BUF_SIZ);   /* USB receive buffers.   */
 STATIC_UBUF(usbRxBuffer1,  CDC_USB_RX_BUF_SIZ);
 
-static const uint8_t  *usbRxBuffer[  2 ] = { usbRxBuffer0, usbRxBuffer1 };
+const uint8_t  *usbRxBuffer[  2 ] = { usbRxBuffer0, usbRxBuffer1 };
 //static const uint8_t  *uartRxBuffer[ 2 ] = { uartRxBuffer0, uartRxBuffer1 };
 
-static int            usbRxIndex, usbBytesReceived;
+int            usbRxIndex, usbBytesReceived;
 static int            uartRxIndex, uartRxCount;
 static int            LastUsbTxCnt;
 
@@ -263,6 +269,7 @@ void CDC_StateChangeEvent( USBD_State_TypeDef oldState,
  *
  * @return USB_STATUS_OK.
  *****************************************************************************/
+extern SemaphoreHandle_t semRecv;
 static int UsbDataReceived(USB_Status_TypeDef status,
                            uint32_t xferred,
                            uint32_t remaining)
@@ -271,12 +278,11 @@ static int UsbDataReceived(USB_Status_TypeDef status,
 
   if ((status == USB_STATUS_OK) && (xferred > 0))
   {
-	USBD_Write(CDC_EP_DATA_IN, (void*) usbRxBuffer[ usbRxIndex ], xferred, NULL);
+	xSemaphoreGiveFromISR(semRecv, NULL);
+
 	usbRxIndex ^= 1;
 	USBD_Read(CDC_EP_DATA_OUT, (void*) usbRxBuffer[ usbRxIndex ],
 			  CDC_USB_RX_BUF_SIZ, UsbDataReceived);
-
-//	BSP_LedToggle(0);
   }
   return USB_STATUS_OK;
 }

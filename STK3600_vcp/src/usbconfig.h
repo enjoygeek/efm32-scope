@@ -66,21 +66,6 @@ extern "C" {
 #define CDC_TIMER_ID        ( 1 )
 //#define MSD_FLUSH_TIMER_ID  ( 0 )
 
-/* Configuration options for the CDC driver. */
-//#define CDC_UART_TX_DMA_CHANNEL   ( 0 )
-//#define CDC_UART_RX_DMA_CHANNEL   ( 1 )
-//#define CDC_TX_DMA_SIGNAL         DMAREQ_USART1_TXBL
-//#define CDC_RX_DMA_SIGNAL         DMAREQ_USART1_RXDATAV
-//#define CDC_UART                  USART1
-//#define CDC_UART_CLOCK            cmuClock_USART1
-//#define CDC_UART_ROUTE            ( USART_ROUTE_RXPEN | \
-//                                    USART_ROUTE_TXPEN | \
-//                                    USART_ROUTE_LOCATION_LOC1 )
-//#define CDC_UART_TX_PORT          gpioPortD
-//#define CDC_UART_TX_PIN           0
-//#define CDC_UART_RX_PORT          gpioPortD
-//#define CDC_UART_RX_PIN           1
-//#define CDC_ENABLE_DK_UART_SWITCH()     /* Empty define, this is not a DK. */
 
 #ifdef __cplusplus
 }
