@@ -34,17 +34,21 @@ extern "C" {
 #endif
 
 
+//typedef struct
+//{
+//	SemaphoreHandle_t semRecv;
+//	SemaphoreHandle_t semTx;
+//} CdcTaskParams_t;
+
 typedef struct
 {
-	SemaphoreHandle_t semRecv;
-	SemaphoreHandle_t semTx;
-} CdcTaskParams_t;
+	char buf[127] __attribute__((aligned(4)));
+	int used_bytes;
+} Buffer;
 
+typedef Buffer* BufferPtr;
 
-//void CDC_Init( void );
-//int  CDC_SetupCmd(const USB_Setup_TypeDef *setup);
-//void CDC_StateChangeEvent( USBD_State_TypeDef oldState,
-//                           USBD_State_TypeDef newState);
+extern void UsbCDCTask(void *pParameters);
 
 #ifdef __cplusplus
 }

@@ -36,7 +36,7 @@ C_SRC += ./src/main.c \
 		 ./Drivers/segmentlcd.c \
 		 ./Drivers/dmactrl.c \
 
-FreeRTOS_Heapmode = 1
+FreeRTOS_Heapmode = 3
 C_SRC += $(wildcard $(SDK_PATH)/FreeRTOS/Source/*.c) \
 		 $(SDK_PATH)/FreeRTOS/Source/portable/GCC/ARM_CM3/port.c \
 		 $(SDK_PATH)/FreeRTOS/Source/portable/MemMang/heap_$(FreeRTOS_Heapmode).c

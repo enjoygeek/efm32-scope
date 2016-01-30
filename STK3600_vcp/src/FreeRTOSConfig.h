@@ -141,6 +141,8 @@ extern "C" {
 #define configQUEUE_REGISTRY_SIZE                 ( 10 )
 #define configUSE_QUEUE_SETS                      ( 0 )
 
+//#define configUSE_NEWLIB_REENTRANT				  ( 1 )
+
 /* Hook function related definitions. */
 #define configUSE_TICK_HOOK                       ( 0 )
 #define configCHECK_FOR_STACK_OVERFLOW            ( 0 )
@@ -173,11 +175,11 @@ extern "C" {
 #define INCLUDE_vTaskDelay                        ( 1 )
 #define INCLUDE_xTaskGetSchedulerState            ( 1 )
 #define INCLUDE_xTaskGetCurrentTaskHandle         ( 1 )
-#define INCLUDE_uxTaskGetStackHighWaterMark       ( 0 )
+#define INCLUDE_uxTaskGetStackHighWaterMark       ( 1 )
 #define INCLUDE_xTaskGetIdleTaskHandle            ( 0 )
 #define INCLUDE_xTimerGetTimerDaemonTaskHandle    ( 0 )
-#define INCLUDE_pcTaskGetTaskName                 ( 0 )
-#define INCLUDE_eTaskGetState                     ( 0 )
+#define INCLUDE_pcTaskGetTaskName                 ( 1 )
+#define INCLUDE_eTaskGetState                     ( 1 )
 
 /* Default value of CPU clock (RC)*/
 #define configCPU_CLOCK_HZ                        (( unsigned long ) 14000000)

@@ -156,48 +156,48 @@ int _lseek(int file, int ptr, int dir)
   return 0;
 }
 
-/**************************************************************************//**
- * @brief
- *  Read from a file.
- *
- * @param[in] file
- *  Descriptor for the file you want to read from.
- *
- * @param[in] ptr
- *  Pointer to the chacaters that are beeing read.
- *
- * @param[in] len
- *  Number of characters to be read.
- *
- * @return
- *  Number of characters that have been read.
- *****************************************************************************/
-int _read(int file, char *ptr, int len)
-{
-  int c, rxCount = 0;
-
-  (void) file;
-
-  while (len--)
-  {
-    if ((c = RETARGET_ReadChar()) != -1)
-    {
-      *ptr++ = c;
-      rxCount++;
-    }
-    else
-    {
-      break;
-    }
-  }
-
-  if (rxCount <= 0)
-  {
-    return -1;                        /* Error exit */
-  }
-
-  return rxCount;
-}
+///**************************************************************************//**
+// * @brief
+// *  Read from a file.
+// *
+// * @param[in] file
+// *  Descriptor for the file you want to read from.
+// *
+// * @param[in] ptr
+// *  Pointer to the chacaters that are beeing read.
+// *
+// * @param[in] len
+// *  Number of characters to be read.
+// *
+// * @return
+// *  Number of characters that have been read.
+// *****************************************************************************/
+//int _read(int file, char *ptr, int len)
+//{
+//  int c, rxCount = 0;
+//
+//  (void) file;
+//
+//  while (len--)
+//  {
+//    if ((c = RETARGET_ReadChar()) != -1)
+//    {
+//      *ptr++ = c;
+//      rxCount++;
+//    }
+//    else
+//    {
+//      break;
+//    }
+//  }
+//
+//  if (rxCount <= 0)
+//  {
+//    return -1;                        /* Error exit */
+//  }
+//
+//  return rxCount;
+//}
 
 /**************************************************************************//**
  * @brief

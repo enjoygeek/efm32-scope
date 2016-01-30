@@ -69,29 +69,6 @@
 // Timer id, see USBTIMER in the USB device stack documentation.
 // The CDC driver has a Rx timeout functionality which require a timer.
 #define CDC_TIMER_ID ( 0 )
-
-// DMA related macros, select DMA channels and DMA request signals.
-#define CDC_UART_TX_DMA_CHANNEL   ( 0 )
-#define CDC_UART_RX_DMA_CHANNEL   ( 1 )
-#define CDC_TX_DMA_SIGNAL         DMAREQ_UART1_TXBL
-#define CDC_RX_DMA_SIGNAL         DMAREQ_UART1_RXDATAV
-
-// UART/USART selection macros.
-#define CDC_UART                  UART1
-#define CDC_UART_CLOCK            cmuClock_UART1
-#define CDC_UART_ROUTE            ( UART_ROUTE_RXPEN | UART_ROUTE_TXPEN | \
-                                    UART_ROUTE_LOCATION_LOC2 )
-#define CDC_UART_TX_PORT          gpioPortB
-#define CDC_UART_TX_PIN           9
-#define CDC_UART_RX_PORT          gpioPortB
-#define CDC_UART_RX_PIN           10
-
-// Activate the RS232 switch on DK's.
-#define CDC_ENABLE_DK_UART_SWITCH() BSP_PeripheralAccess(BSP_RS232_UART, true)
-
-// No RS232 switch on STK's. Leave the definition "empty".
-#define CDC_ENABLE_DK_UART_SWITCH()
-
   @endverbatim
  ** @} ***********************************************************************/
 
@@ -150,8 +127,12 @@ const uint8_t  *usbRxBuffer[  2 ] = { usbRxBuffer0, usbRxBuffer1 };
 
 static int            usbRxIndex = 0;
 
-static char usbTxBuffers[128] __attribute__((aligned(4)));
-static int txLen;
+#define BUF_COUNT 6
+
+static Buffer txBuffers[BUF_COUNT];
+static int usbTxIndex = 0;
+//static char usbTxBuffers[128] __attribute__((aligned(4)));
+//static int txLen;
 
 int SetupCmd(const USB_Setup_TypeDef *setup);
 void StateChangeEvent( USBD_State_TypeDef oldState,
@@ -178,54 +159,95 @@ const USBD_Init_TypeDef usbInitStruct =
 };
 
 
-static SemaphoreHandle_t semTx;
-static SemaphoreHandle_t semRecv;
+static SemaphoreHandle_t semTx = NULL;
+static SemaphoreHandle_t semRecv = NULL;
+
+QueueHandle_t fullQueue = NULL;
+QueueHandle_t emptyQueue = NULL;
 /** @endcond */
 
-/**************************************************************************//**
- * @brief CDC device initialization.
- *****************************************************************************/
-void CDC_Init( void )
+
+int _read(int file, char *ptr, int len)
 {
-	setvbuf(stdout, usbTxBuffers, _IOLBF, 128);
+  int c, rxCount = 0;
+
+  (void) file;
+
+//  while (len--)
+//  {
+//    if ((c = RETARGET_ReadChar()) != -1)
+//    {
+//      *ptr++ = c;
+//      rxCount++;
+//    }
+//    else
+//    {
+//      break;
+//    }
+//  }
+//
+//  if (rxCount <= 0)
+//  {
+//    return -1;                        /* Error exit */
+//  }
+
+  return rxCount;
 }
 
+SemaphoreHandle_t write_sem = NULL;
 int _write(int file, const char *ptr, int len)
 {
-//	memcpy(txBuffer, ptr, len);
-	txLen = len;
-	xSemaphoreGive(semTx);
+	BufferPtr pEmptyBuf;
+	BaseType_t ret = xQueueReceive(emptyQueue, &pEmptyBuf, portMAX_DELAY);
+	memcpy(pEmptyBuf->buf, ptr, len);
+	pEmptyBuf->used_bytes = len;
+	xQueueSendToBack(fullQueue, &pEmptyBuf, portMAX_DELAY);
+
 	return len;
 }
 
+static int UsbDataReceived(USB_Status_TypeDef status,
+                           uint32_t xferred,
+                           uint32_t remaining);
+static int UsbDataTransmitted(USB_Status_TypeDef status,
+                              uint32_t xferred,
+                              uint32_t remaining);
+
+static bool portOpen = false;
+
 void UsbCDCTask(void *pParameters)
 {
-	CdcTaskParams_t *pData = (CdcTaskParams_t*) pParameters;
+//	setvbuf(stdout, txBuffers[0].buf, _IOLBF, sizeof(txBuffers[0].buf));
 
-	txLen = 0;
-	semTx = pData->semTx;
-	semRecv = pData->semRecv;
-
-	CDC_Init();                   /* Initialize the communication class device. */
-
+	fullQueue = xQueueCreate(BUF_COUNT, sizeof(BufferPtr));
+	emptyQueue = xQueueCreate(BUF_COUNT, sizeof(BufferPtr));
+	for (int i = 0; i < BUF_COUNT; i++)
+	{
+		BufferPtr buf_ptr = &txBuffers[i];
+		xQueueSendToBack(emptyQueue, &buf_ptr, portMAX_DELAY);
+	}
 
 	/* Initialize and start USB device stack. */
-	int ret = USBD_Init(&usbInitStruct);
+	USBD_Init(&usbInitStruct);
 
 	/*
 	* When using a debugger it is practical to uncomment the following three
 	* lines to force host to re-enumerate the device.
 	*/
-	USBD_Disconnect();
-	USBTIMER_DelayMs( 1000 );
-	USBD_Connect();
+//	USBD_Disconnect();
+//	USBTIMER_DelayMs( 1000 );
+//	USBD_Connect();
 	for(;;)
 	{
-		xSemaphoreTake(pData->semTx, portMAX_DELAY);
-		if (txLen > 0)
+		BufferPtr pFilledBuffer;
+		xQueueReceive(fullQueue, &pFilledBuffer, portMAX_DELAY);
+		if ((pFilledBuffer->used_bytes > 0) && portOpen)
 		{
-			USBD_Write(CDC_EP_DATA_IN, usbTxBuffers, txLen, NULL);
+			while (USBD_EpIsBusy(CDC_EP_DATA_IN))
+				;
+			USBD_Write(CDC_EP_DATA_IN, pFilledBuffer->buf, pFilledBuffer->used_bytes, NULL);
 		}
+		xQueueSendToBack(emptyQueue, &pFilledBuffer, portMAX_DELAY);
 	}
 }
 
@@ -281,6 +303,7 @@ int CDC_SetupCmd(const USB_Setup_TypeDef *setup)
            ( setup->wLength == 0                     )    ) /* No data.       */
       {
         /* Do nothing ( Non compliant behaviour !! ) */
+    	  portOpen = (setup->wValue != 0);
         retVal = USB_STATUS_OK;
       }
       break;
@@ -369,6 +392,19 @@ static int UsbDataTransmitted(USB_Status_TypeDef status,
 
   if (status == USB_STATUS_OK)
   {
+	  Buffer *buf;
+	  BaseType_t woken;
+	  bool need_yield = false;
+	  xQueueReceiveFromISR(fullQueue, &buf, &woken);
+	  need_yield |= woken == pdTRUE;
+
+	  xQueueSendToBackFromISR(emptyQueue, &buf, &woken);
+	  need_yield |= woken == pdTRUE;
+
+	  if (need_yield)
+	  {
+		  taskYIELD();
+	  }
   }
   return USB_STATUS_OK;
 }

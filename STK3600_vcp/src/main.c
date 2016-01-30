@@ -29,8 +29,6 @@
 #include "bsp_trace.h"
 #include "sleep.h"
 
-//#include "em_usb.h"
-//#include "msdd.h"
 #include "../Drivers/cdc.h"
 
 
@@ -48,53 +46,15 @@ typedef struct
 } LedTaskParams_t;
 
 
-//typedef struct
-//{
-//	SemaphoreHandle_t semRecv;
-//	SemaphoreHandle_t semTx;
-//} CdcTaskParams_t;
-
-
-/**************************************************************************//**
- *
- * This example shows how a Composite USB Device can be implemented.
- *
- *****************************************************************************/
-
-//int SetupCmd(const USB_Setup_TypeDef *setup);
-//void StateChangeEvent( USBD_State_TypeDef oldState,
-//                       USBD_State_TypeDef newState );
-//
-//static const USBD_Callbacks_TypeDef callbacks =
-//{
-//  .usbReset        = NULL,
-//  .usbStateChange  = StateChangeEvent,
-//  .setupCmd        = SetupCmd,
-//  .isSelfPowered   = NULL,
-//  .sofInt          = NULL
-//};
-//
-//const USBD_Init_TypeDef usbInitStruct =
-//{
-//  .deviceDescriptor    = &USBDESC_deviceDesc,
-//  .configDescriptor    = USBDESC_configDesc,
-//  .stringDescriptors   = USBDESC_strings,
-//  .numberOfStrings     = sizeof(USBDESC_strings)/sizeof(void*),
-//  .callbacks           = &callbacks,
-//  .bufferingMultiplier = USBDESC_bufferingMultiplier,
-//  .reserved            = 0
-//};
-
-//SemaphoreHandle_t semRecv;
-//SemaphoreHandle_t semTx;
 
 /**************************************************************************//**
  * @brief Simple task which is blinking led
  * @param *pParameters pointer to parameters passed to the function
  *****************************************************************************/
+extern SemaphoreHandle_t write_sem;
 static void LedTask(void *pParameters)
 {
-	vTaskDelay(5000 / portTICK_RATE_MS);
+	vTaskDelay(1000 / portTICK_RATE_MS);
 
   LedTaskParams_t     * pData = (LedTaskParams_t*) pParameters;
   const portTickType delay = pData->delay;
@@ -103,61 +63,13 @@ static void LedTask(void *pParameters)
   {
     BSP_LedToggle(pData->ledNo);
     vTaskDelay(delay);
-    printf("!\n");
+    printf("%s\n", pcTaskGetTaskName(NULL));
   }
 }
-
-//extern const uint8_t  *usbRxBuffer[  2 ];
-//extern int            usbRxIndex, usbBytesReceived;
-//
-//static const char *txBuffer[256];
-//static int txLen;
-//static void UsbCDCTask(void *pParameters)
-//{
-//	txLen = 0;
-//
-//	CdcTaskParams_t *pData = (CdcTaskParams_t*) pParameters;
-//	CDC_Init();                   /* Initialize the communication class device. */
-//
-//
-//	/* Initialize and start USB device stack. */
-//	int ret = USBD_Init(&usbInitStruct);
-//
-//	/*
-//	* When using a debugger it is practical to uncomment the following three
-//	* lines to force host to re-enumerate the device.
-//	*/
-//	USBD_Disconnect();
-//	USBTIMER_DelayMs( 1000 );
-//	USBD_Connect();
-//	for(;;)
-//	{
-//		xSemaphoreTake(semTx, portMAX_DELAY);
-//		if (txLen > 0)
-//		{
-//			USBD_Write(CDC_EP_DATA_IN, txBuffer, txLen, NULL);
-//		}
-//	}
-//}
-
-
-int RETARGET_ReadChar(void)
-{
-	return 0;
-}
-
-//int _write(int file, const char *ptr, int len)
-//{
-//	memcpy(txBuffer, ptr, len);
-//	txLen = len;
-//	xSemaphoreGive(semTx);
-//	return len;
-//}
 
 /**************************************************************************//**
  * @brief main - the entrypoint after reset.
  *****************************************************************************/
-extern void UsbCDCTask(void *pParameters);
 int main( void )
 {
 	CHIP_Init();
@@ -186,16 +98,10 @@ int main( void )
    static LedTaskParams_t parametersToTask1 = { 1000 / portTICK_RATE_MS, 0 };
    static LedTaskParams_t parametersToTask2 = { 500 / portTICK_RATE_MS, 1 };
 
-   CdcTaskParams_t parametersToCdc;
-   parametersToCdc.semRecv = xSemaphoreCreateCounting(1000, 0);
-   parametersToCdc.semTx = xSemaphoreCreateCounting(1000, 0);
-
-
-//   setvbuf(stdout, NULL, _IOLBF, 16);
    /*Create two task for blinking leds*/
-//   xTaskCreate( LedTask, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
+   xTaskCreate( UsbCDCTask, "UsbCDC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+   xTaskCreate( LedTask, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
    xTaskCreate( LedTask, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
-   xTaskCreate( UsbCDCTask, "UsbCDC", STACK_SIZE_FOR_TASK*10, &parametersToCdc, TASK_PRIORITY, NULL);
 
 
    NVIC_SetPriority(USB_IRQn, 7);
