@@ -120,23 +120,19 @@ static cdcLineCoding_TypeDef __attribute__ ((aligned(4))) cdcLineCoding =
 };
 EFM32_PACK_END()
 
-STATIC_UBUF(usbRxBuffer0,  CDC_USB_RX_BUF_SIZ);   /* USB receive buffers.   */
-STATIC_UBUF(usbRxBuffer1,  CDC_USB_RX_BUF_SIZ);
-
-const uint8_t  *usbRxBuffer[  2 ] = { usbRxBuffer0, usbRxBuffer1 };
-
-static int            usbRxIndex = 0;
-
 #define BUF_COUNT 6
-
 static Buffer txBuffers[BUF_COUNT];
-static int usbTxIndex = 0;
-//static char usbTxBuffers[128] __attribute__((aligned(4)));
-//static int txLen;
+static Buffer rxBuffers[BUF_COUNT];
 
 int SetupCmd(const USB_Setup_TypeDef *setup);
 void StateChangeEvent( USBD_State_TypeDef oldState,
                        USBD_State_TypeDef newState );
+static int UsbDataReceived(USB_Status_TypeDef status,
+                           uint32_t xferred,
+                           uint32_t remaining);
+static int UsbDataTransmitted(USB_Status_TypeDef status,
+                              uint32_t xferred,
+                              uint32_t remaining);
 
 static const USBD_Callbacks_TypeDef callbacks =
 {
@@ -158,75 +154,102 @@ const USBD_Init_TypeDef usbInitStruct =
   .reserved            = 0
 };
 
+static QueueHandle_t fullTxQueue = NULL;
+static QueueHandle_t emptyTxQueue = NULL;
+static QueueHandle_t fullRxQueue = NULL;
+static QueueHandle_t emptyRxQueue = NULL;
 
-static SemaphoreHandle_t semTx = NULL;
-static SemaphoreHandle_t semRecv = NULL;
 
-QueueHandle_t fullQueue = NULL;
-QueueHandle_t emptyQueue = NULL;
+static bool portOpen = false;
+
 /** @endcond */
 
 
+char* gets(char*ptr)
+{
+	return ptr;
+}
+
 int _read(int file, char *ptr, int len)
 {
-  int c, rxCount = 0;
-
-  (void) file;
-
-//  while (len--)
+//  int rxCount = 0;
+//
+//  (void) file;
+//  if (!portOpen)
 //  {
-//    if ((c = RETARGET_ReadChar()) != -1)
-//    {
-//      *ptr++ = c;
-//      rxCount++;
-//    }
-//    else
-//    {
-//      break;
-//    }
+//	  return -1;
+//  }
+//  while (len > 0)
+//  {
+//	  SegmentLCD_Number(len);
+////	  printf("Read len: %d\n", len);
+//	  BufferPtr pBuf;
+//	  if (uxQueueMessagesWaiting(fullRxQueue) == 0)
+//		  return -1;
+//	  xQueuePeek(fullRxQueue, &pBuf, portMAX_DELAY);
+//	  if (pBuf->used_bytes == 0) //end of file
+//	  {
+//		  xQueueReceive(fullRxQueue, &pBuf, portMAX_DELAY);
+//		  xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);
+////		  break;
+//		  return -1;
+//	  }
+//	  if (pBuf->used_bytes <= len)
+//	  {
+//		  memcpy(ptr, pBuf->buf, pBuf->used_bytes);
+//		  ptr += pBuf->used_bytes;
+//		  rxCount += pBuf->used_bytes;
+//		  len -= pBuf->used_bytes;
+//		  xQueueReceive(fullRxQueue, &pBuf, portMAX_DELAY);
+//		  xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);
+//	  }
+//	  else
+//	  {
+//		  memcpy(ptr, pBuf->buf, len);
+//		  memmove(&pBuf->buf[0], &pBuf->buf[len], pBuf->used_bytes - len);
+//		  pBuf->used_bytes -= len;
+//		  return len;
+//	  }
 //  }
 //
 //  if (rxCount <= 0)
 //  {
 //    return -1;                        /* Error exit */
 //  }
-
-  return rxCount;
+//
+//  return rxCount;
+	return 0;
 }
 
-SemaphoreHandle_t write_sem = NULL;
 int _write(int file, const char *ptr, int len)
 {
 	BufferPtr pEmptyBuf;
-	BaseType_t ret = xQueueReceive(emptyQueue, &pEmptyBuf, portMAX_DELAY);
+	BaseType_t ret = xQueueReceive(emptyTxQueue, &pEmptyBuf, portMAX_DELAY);
 	memcpy(pEmptyBuf->buf, ptr, len);
 	pEmptyBuf->used_bytes = len;
-	xQueueSendToBack(fullQueue, &pEmptyBuf, portMAX_DELAY);
-
+	xQueueSendToBack(fullTxQueue, &pEmptyBuf, portMAX_DELAY);
 	return len;
 }
-
-static int UsbDataReceived(USB_Status_TypeDef status,
-                           uint32_t xferred,
-                           uint32_t remaining);
-static int UsbDataTransmitted(USB_Status_TypeDef status,
-                              uint32_t xferred,
-                              uint32_t remaining);
-
-static bool portOpen = false;
 
 void UsbCDCTask(void *pParameters)
 {
 //	setvbuf(stdout, txBuffers[0].buf, _IOLBF, sizeof(txBuffers[0].buf));
 
-	fullQueue = xQueueCreate(BUF_COUNT, sizeof(BufferPtr));
-	emptyQueue = xQueueCreate(BUF_COUNT, sizeof(BufferPtr));
+	fullTxQueue = xQueueCreate(BUF_COUNT, sizeof(BufferPtr));
+	emptyTxQueue = xQueueCreate(BUF_COUNT, sizeof(BufferPtr));
 	for (int i = 0; i < BUF_COUNT; i++)
 	{
 		BufferPtr buf_ptr = &txBuffers[i];
-		xQueueSendToBack(emptyQueue, &buf_ptr, portMAX_DELAY);
+		xQueueSendToBack(emptyTxQueue, &buf_ptr, portMAX_DELAY);
 	}
 
+	fullRxQueue = xQueueCreate(BUF_COUNT, sizeof(BufferPtr));
+	emptyRxQueue = xQueueCreate(BUF_COUNT, sizeof(BufferPtr));
+	for (int i = 0; i < BUF_COUNT; i++)
+	{
+		BufferPtr buf_ptr = &rxBuffers[i];
+		xQueueSendToBack(emptyRxQueue, &buf_ptr, portMAX_DELAY);
+	}
 	/* Initialize and start USB device stack. */
 	USBD_Init(&usbInitStruct);
 
@@ -240,14 +263,14 @@ void UsbCDCTask(void *pParameters)
 	for(;;)
 	{
 		BufferPtr pFilledBuffer;
-		xQueueReceive(fullQueue, &pFilledBuffer, portMAX_DELAY);
+		xQueueReceive(fullTxQueue, &pFilledBuffer, portMAX_DELAY);
 		if ((pFilledBuffer->used_bytes > 0) && portOpen)
 		{
 			while (USBD_EpIsBusy(CDC_EP_DATA_IN))
 				;
 			USBD_Write(CDC_EP_DATA_IN, pFilledBuffer->buf, pFilledBuffer->used_bytes, NULL);
 		}
-		xQueueSendToBack(emptyQueue, &pFilledBuffer, portMAX_DELAY);
+		xQueueSendToBack(emptyTxQueue, &pFilledBuffer, portMAX_DELAY);
 	}
 }
 
@@ -333,8 +356,9 @@ void CDC_StateChangeEvent( USBD_State_TypeDef oldState,
     }
 
     /* Start receiving data from USB host. */
-    USBD_Read(CDC_EP_DATA_OUT, (void*) usbRxBuffer[ usbRxIndex ],
-              CDC_USB_RX_BUF_SIZ, UsbDataReceived);
+    BufferPtr pBuf;
+    xQueuePeekFromISR(emptyRxQueue, &pBuf);
+    USBD_Read(CDC_EP_DATA_OUT, pBuf->buf, sizeof(pBuf->buf), UsbDataReceived);
   }
 
   if (oldState == USBD_STATE_CONFIGURED)
@@ -364,11 +388,29 @@ static int UsbDataReceived(USB_Status_TypeDef status,
 
   if ((status == USB_STATUS_OK) && (xferred > 0))
   {
-	xSemaphoreGiveFromISR(semRecv, NULL);
+	  BufferPtr pBuf;
+	  xQueueReceiveFromISR(emptyRxQueue, &pBuf, NULL);
+	  pBuf->used_bytes = xferred;
+	  BaseType_t woken;
+	  xQueueSendToBackFromISR(fullRxQueue, &pBuf, &woken);
+	  if (xQueueIsQueueEmptyFromISR(emptyRxQueue))
+	  {
+		  xQueueReceiveFromISR(fullRxQueue, &pBuf, NULL);
+		  xQueueSendToBackFromISR(emptyRxQueue, &pBuf, NULL);
+	  }
+		xQueuePeekFromISR(emptyRxQueue, &pBuf);
+		USBD_Read(CDC_EP_DATA_OUT, pBuf->buf, sizeof(pBuf->buf), UsbDataReceived);
 
-	usbRxIndex ^= 1;
-	USBD_Read(CDC_EP_DATA_OUT, (void*) usbRxBuffer[ usbRxIndex ],
-			  CDC_USB_RX_BUF_SIZ, UsbDataReceived);
+//	SegmentLCD_Number(uxQueueMessagesWaitingFromISR(fullRxQueue));
+	  if (woken == pdTRUE)
+	  {
+		  taskYIELD();
+	  }
+//	xSemaphoreGiveFromISR(semRecv, NULL);
+//
+//	usbRxIndex ^= 1;
+//	USBD_Read(CDC_EP_DATA_OUT, (void*) usbRxBuffer[ usbRxIndex ],
+//			  CDC_USB_RX_BUF_SIZ, UsbDataReceived);
   }
   return USB_STATUS_OK;
 }
@@ -395,10 +437,10 @@ static int UsbDataTransmitted(USB_Status_TypeDef status,
 	  Buffer *buf;
 	  BaseType_t woken;
 	  bool need_yield = false;
-	  xQueueReceiveFromISR(fullQueue, &buf, &woken);
+	  xQueueReceiveFromISR(fullTxQueue, &buf, &woken);
 	  need_yield |= woken == pdTRUE;
 
-	  xQueueSendToBackFromISR(emptyQueue, &buf, &woken);
+	  xQueueSendToBackFromISR(emptyTxQueue, &buf, &woken);
 	  need_yield |= woken == pdTRUE;
 
 	  if (need_yield)

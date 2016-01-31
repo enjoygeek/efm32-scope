@@ -24,6 +24,8 @@
 #include "em_assert.h"
 #include "em_cmu.h"
 #include "em_gpio.h"
+#include "em_adc.h"
+#include "em_dac.h"
 #include "bsp.h"
 #include "../Drivers/segmentlcd.h"
 #include "bsp_trace.h"
@@ -51,7 +53,6 @@ typedef struct
  * @brief Simple task which is blinking led
  * @param *pParameters pointer to parameters passed to the function
  *****************************************************************************/
-extern SemaphoreHandle_t write_sem;
 static void LedTask(void *pParameters)
 {
 	vTaskDelay(1000 / portTICK_RATE_MS);
@@ -63,8 +64,55 @@ static void LedTask(void *pParameters)
   {
     BSP_LedToggle(pData->ledNo);
     vTaskDelay(delay);
-    printf("%s\n", pcTaskGetTaskName(NULL));
+    printf("%s. FreeHeap: %d\n", pcTaskGetTaskName(NULL), xPortGetFreeHeapSize());
   }
+}
+
+static void AdcTask(void *pParameters)
+{
+	CMU_ClockEnable(cmuClock_ADC0, true);
+	ADC_Init_TypeDef init = ADC_INIT_DEFAULT;
+	ADC_InitSingle_TypeDef init_single = ADC_INITSINGLE_DEFAULT;
+	init.warmUpMode = adcWarmupKeepADCWarm;
+	init.timebase = 0;
+	init.prescale = ADC_PrescaleCalc(1000, 0);
+	ADC_Init(ADC0, &init);
+
+	init_single.reference = adcRef1V25;
+//	init_single.input = adcSingleInputDACOut0;
+	init_single.input = adcSingleInputVDDDiv3;
+	init_single.rep = true;
+	init_single.leftAdjust = true;
+	ADC_InitSingle(ADC0, &init_single);
+
+	ADC_Start(ADC0, adcStartSingle);
+	for (;;)
+	{
+		vTaskDelay(1000 / portTICK_RATE_MS);
+		while (ADC0->STATUS & ADC_STATUS_SINGLEDV == 0)
+			;
+		int res = ADC_DataSingleGet(ADC0);
+		printf("ADC VDD: %dmV\n", (res*3*1250) >> 16);
+	}
+}
+
+static void DacTask(void *pParameters)
+{
+	CMU_ClockEnable(cmuClock_DAC0, true);
+	DAC_Init_TypeDef init = DAC_INIT_DEFAULT;
+	DAC_InitChannel_TypeDef channel = DAC_INITCHANNEL_DEFAULT;
+
+	init.reference = dacRefVDD;
+	init.outMode = dacOutputPinADC;
+	init.prescale = DAC_PrescaleCalc(1000, 0);
+
+	DAC_Init(DAC0, &init);
+
+	channel.refreshEnable = true;
+	DAC_InitChannel(DAC0, &channel, 0);
+
+	DAC_Channel0OutputSet(DAC0, 100);
+	DAC_Enable(DAC0, 0, true);
 }
 
 /**************************************************************************//**
@@ -100,9 +148,10 @@ int main( void )
 
    /*Create two task for blinking leds*/
    xTaskCreate( UsbCDCTask, "UsbCDC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
-   xTaskCreate( LedTask, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
-   xTaskCreate( LedTask, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
-
+//   xTaskCreate( LedTask, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
+//   xTaskCreate( LedTask, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
+   xTaskCreate( AdcTask, "ADC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+   xTaskCreate( DacTask, "DAC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 
    NVIC_SetPriority(USB_IRQn, 7);
    vTaskStartScheduler();

@@ -16,6 +16,8 @@ C_SRC += $(SDK_PATH)/emlib/src/em_int.c \
 		 $(SDK_PATH)/emlib/src/em_system.c \
 		 $(SDK_PATH)/emlib/src/em_rmu.c \
 		 $(SDK_PATH)/emlib/src/em_rtc.c \
+		 $(SDK_PATH)/emlib/src/em_adc.c \
+		 $(SDK_PATH)/emlib/src/em_dac.c \
 		 $(SDK_PATH)/emdrv/sleep/src/sleep.c
 		 
 C_SRC += $(SDK_PATH)/usb/src/em_usbd.c \
@@ -36,7 +38,7 @@ C_SRC += ./src/main.c \
 		 ./Drivers/segmentlcd.c \
 		 ./Drivers/dmactrl.c \
 
-FreeRTOS_Heapmode = 3
+FreeRTOS_Heapmode = 1
 C_SRC += $(wildcard $(SDK_PATH)/FreeRTOS/Source/*.c) \
 		 $(SDK_PATH)/FreeRTOS/Source/portable/GCC/ARM_CM3/port.c \
 		 $(SDK_PATH)/FreeRTOS/Source/portable/MemMang/heap_$(FreeRTOS_Heapmode).c
