@@ -12,6 +12,7 @@ C_SRC += $(SDK_PATH)/emlib/src/em_int.c \
 		 $(SDK_PATH)/emlib/src/em_emu.c \
 		 $(SDK_PATH)/emlib/src/em_gpio.c \
 		 $(SDK_PATH)/emlib/src/em_timer.c \
+		 $(SDK_PATH)/emlib/src/em_prs.c \
 		 $(SDK_PATH)/emlib/src/em_lcd.c \
 		 $(SDK_PATH)/emlib/src/em_system.c \
 		 $(SDK_PATH)/emlib/src/em_rmu.c \
