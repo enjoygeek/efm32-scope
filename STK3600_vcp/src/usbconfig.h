@@ -35,7 +35,7 @@ extern "C" {
 ** Specify number of application timers you need.                          **
 **                                                                         **
 *****************************************************************************/
-#define NUM_APP_TIMERS 1
+#define NUM_APP_TIMERS 0
 
 /****************************************************************************
 **                                                                         **
@@ -44,28 +44,16 @@ extern "C" {
 *****************************************************************************/
 
 /* Define interface numbers */
-//#define VUD_INTERFACE_NO        ( 0 )
-//#define MSD_INTERFACE_NO        ( 1 )
 #define CDC_CTRL_INTERFACE_NO   ( 0 )
 #define CDC_DATA_INTERFACE_NO   ( 1 )
 #define NUM_INTERFACES          ( 2 )
 
-//#define MSD_NUM_EP_USED         ( 2 ) /* Number of EP's used by MSD function */
-//#define VUD_NUM_EP_USED         ( 0 ) /* Number of EP's used by VUD function */
 #define CDC_NUM_EP_USED         ( 3 ) /* Number of EP's used by CDC function */
 
 /* Define USB endpoint addresses for the interfaces */
 #define CDC_EP_DATA_OUT   ( 0x01 ) /* Endpoint for CDC data reception.       */
 #define CDC_EP_DATA_IN    ( 0x81 ) /* Endpoint for CDC data transmission.    */
 #define CDC_EP_NOTIFY     ( 0x82 ) /* The notification endpoint (not used).  */
-
-//#define MSD_BULK_OUT      ( 0x02 ) /* Endpoint for MSD data reception.       */
-//#define MSD_BULK_IN       ( 0x83 ) /* Endpoint for MSD data transmission.    */
-
-/* Define timer ID's */
-#define CDC_TIMER_ID        ( 1 )
-//#define MSD_FLUSH_TIMER_ID  ( 0 )
-
 
 #ifdef __cplusplus
 }

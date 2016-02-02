@@ -35,6 +35,7 @@ C_SRC += ./src/main.c \
 		 ./src/retargetio.c \
 		 ./src/descriptors.c \
 		 ./src/low_power_tick_management.c \
+		 ./src/adcTask.c \
 		 ./Drivers/cdc.c \
 		 ./Drivers/segmentlcd.c \
 		 ./Drivers/dmactrl.c \

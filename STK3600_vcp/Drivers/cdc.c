@@ -221,6 +221,7 @@ int _read(int file, char *ptr, int len)
 	return 0;
 }
 
+static SemaphoreHandle_t semEpIn = NULL;
 int _write(int file, const char *ptr, int len)
 {
 	BufferPtr pEmptyBuf;
@@ -245,6 +246,7 @@ void UsbCDCTask(void *pParameters)
 
 	fullRxQueue = xQueueCreate(BUF_COUNT, sizeof(BufferPtr));
 	emptyRxQueue = xQueueCreate(BUF_COUNT, sizeof(BufferPtr));
+	semEpIn = xSemaphoreCreateBinary();
 	for (int i = 0; i < BUF_COUNT; i++)
 	{
 		BufferPtr buf_ptr = &rxBuffers[i];
@@ -253,22 +255,17 @@ void UsbCDCTask(void *pParameters)
 	/* Initialize and start USB device stack. */
 	USBD_Init(&usbInitStruct);
 
-	/*
-	* When using a debugger it is practical to uncomment the following three
-	* lines to force host to re-enumerate the device.
-	*/
-//	USBD_Disconnect();
-//	USBTIMER_DelayMs( 1000 );
-//	USBD_Connect();
+	while (USBD_EpIsBusy(CDC_EP_DATA_IN))
+		;
+	xSemaphoreGive(semEpIn);
 	for(;;)
 	{
 		BufferPtr pFilledBuffer;
 		xQueueReceive(fullTxQueue, &pFilledBuffer, portMAX_DELAY);
 		if ((pFilledBuffer->used_bytes > 0) && portOpen)
 		{
-			while (USBD_EpIsBusy(CDC_EP_DATA_IN))
-				;
-			USBD_Write(CDC_EP_DATA_IN, pFilledBuffer->buf, pFilledBuffer->used_bytes, NULL);
+			xSemaphoreTake(semEpIn, portMAX_DELAY);
+			USBD_Write(CDC_EP_DATA_IN, pFilledBuffer->buf, pFilledBuffer->used_bytes, UsbDataTransmitted);
 		}
 		xQueueSendToBack(emptyTxQueue, &pFilledBuffer, portMAX_DELAY);
 	}
@@ -401,16 +398,10 @@ static int UsbDataReceived(USB_Status_TypeDef status,
 		xQueuePeekFromISR(emptyRxQueue, &pBuf);
 		USBD_Read(CDC_EP_DATA_OUT, pBuf->buf, sizeof(pBuf->buf), UsbDataReceived);
 
-//	SegmentLCD_Number(uxQueueMessagesWaitingFromISR(fullRxQueue));
 	  if (woken == pdTRUE)
 	  {
 		  taskYIELD();
 	  }
-//	xSemaphoreGiveFromISR(semRecv, NULL);
-//
-//	usbRxIndex ^= 1;
-//	USBD_Read(CDC_EP_DATA_OUT, (void*) usbRxBuffer[ usbRxIndex ],
-//			  CDC_USB_RX_BUF_SIZ, UsbDataReceived);
   }
   return USB_STATUS_OK;
 }
@@ -434,19 +425,9 @@ static int UsbDataTransmitted(USB_Status_TypeDef status,
 
   if (status == USB_STATUS_OK)
   {
-	  Buffer *buf;
 	  BaseType_t woken;
-	  bool need_yield = false;
-	  xQueueReceiveFromISR(fullTxQueue, &buf, &woken);
-	  need_yield |= woken == pdTRUE;
-
-	  xQueueSendToBackFromISR(emptyTxQueue, &buf, &woken);
-	  need_yield |= woken == pdTRUE;
-
-	  if (need_yield)
-	  {
-		  taskYIELD();
-	  }
+	  xSemaphoreGiveFromISR(semEpIn, &woken);
+	  portYIELD_FROM_ISR(woken);
   }
   return USB_STATUS_OK;
 }
