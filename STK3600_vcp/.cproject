@@ -33,7 +33,7 @@
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1515406960" languageId="org.eclipse.cdt.core.assembly" languageName="Assembly" sourceContentType="org.eclipse.cdt.core.asmSource" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.105990036" name="GNU C++" superClass="org.eclipse.cdt.build.core.settings.holder">
-								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.981976119" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" valueType="includePath">
+								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.981976119" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="../../sdk/emlib/inc"/>
 									<listOptionValue builtIn="false" value="../../sdk/usb/inc"/>
 									<listOptionValue builtIn="false" value="/home/corviniol/freelance/efm32-scope/sdk/Device/SiliconLabs/EFM32LG/Include"/>
@@ -45,7 +45,7 @@
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.215470158" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.95822806" name="GNU C" superClass="org.eclipse.cdt.build.core.settings.holder">
-								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.728894495" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" valueType="includePath">
+								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.728894495" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="../../sdk/emlib/inc"/>
 									<listOptionValue builtIn="false" value="../../sdk/usb/inc"/>
 									<listOptionValue builtIn="false" value="/home/corviniol/freelance/efm32-scope/sdk/Device/SiliconLabs/EFM32LG/Include"/>

@@ -100,11 +100,19 @@ int main( void )
    static LedTaskParams_t parametersToTask1 = { 1000 / portTICK_RATE_MS, 0 };
    static LedTaskParams_t parametersToTask2 = { 500 / portTICK_RATE_MS, 1 };
 
+   static AdcTaskParams_t parametersToAdc =
+   {
+		   .adcChannelsMask = 0x32,
+		   .uPrsChannel = 5,
+		   .uSampleRate = 1,
+		   .uTimer = 3
+   };
+
    /*Create two task for blinking leds*/
    xTaskCreate( UsbCDCTask, "UsbCDC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 //   xTaskCreate( LedTask, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
 //   xTaskCreate( LedTask, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
-   xTaskCreate( vAdcTask, "ADC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY + 1, NULL);
+   xTaskCreate( vAdcTask, "ADC", STACK_SIZE_FOR_TASK, &parametersToAdc, TASK_PRIORITY + 1, NULL);
    xTaskCreate( vDacTask, "DAC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 
    NVIC_SetPriority(USB_IRQn, 7);

@@ -6,6 +6,7 @@
  */
 
 #include "adcTask.h"
+#include <stdio.h>
 
 #include "em_cmu.h"
 #include "em_adc.h"
@@ -23,15 +24,48 @@ void ADC0_IRQHandler()
 	ADC_IntClear(ADC0, ADC_IFC_SCAN);
 	BaseType_t woken;
 	xSemaphoreGiveFromISR(semADC, &woken);
-	if (woken == pdTRUE)
+	portYIELD_FROM_ISR(woken);
+}
+
+static void vConfigureTimer(unsigned uSampleRate)
+{
+	unsigned hfperclks = CMU_ClockFreqGet(cmuClock_TIMER3) / uSampleRate;
+
+	CMU_ClockEnable(cmuClock_TIMER3, true);
+	TIMER_Init_TypeDef timer_init = TIMER_INIT_DEFAULT;
+	timer_init.prescale = 31 - __builtin_clz(hfperclks >> 16);
+	TIMER_TopSet(TIMER3, (CMU_ClockFreqGet(cmuClock_TIMER3) >> timer_init.prescale) / uSampleRate);
+	TIMER_Init(TIMER3, &timer_init);
+}
+
+static void vConfigurePrs(unsigned uCh)
+{
+	CMU_ClockEnable(cmuClock_PRS, true);
+	PRS_LevelSet(0, 1 << (uCh + _PRS_SWLEVEL_CH0LEVEL_SHIFT));
+	PRS_SourceSignalSet(uCh, PRS_CH_CTRL_SOURCESEL_TIMER3, PRS_CH_CTRL_SIGSEL_TIMER0OF, prsEdgePos);
+}
+
+static int iConvertAdcReading(int reading, const ADC_InitScan_TypeDef *conf, const int Vdd_mV)
+{
+	int mult;
+	switch (conf->reference)
 	{
-		taskYIELD();
+		case adcRef1V25: mult = 1250; break;
+		case adcRef2V5: mult = 2500; break;
+		case adcRefVDD: mult = Vdd_mV; break;
+		case adcRef2xVDD: mult = 2*Vdd_mV; break;
+		case adcRef5VDIFF: mult = 5000; break;
+		default:
+			printf("External references unsupported\n");
+			return 0;
 	}
-	BSP_LedToggle(0);
+	return (reading*mult) >> 16;
 }
 
 void vAdcTask(void *pParameters)
 {
+	AdcTaskParams_t *pData = pParameters;
+
 	semADC = xSemaphoreCreateBinary();
 
 	CMU_ClockEnable(cmuClock_ADC0, true);
@@ -45,63 +79,46 @@ void vAdcTask(void *pParameters)
 	ADC_IntEnable(ADC0, ADC_IF_SCAN);
 
 
-	ADC_InitSingle_TypeDef init_single =
-	{
-		.reference = adcRef1V25,
-		.input = adcSingleInputCh5,
-		.resolution = adcRes12Bit,
-		.acqTime = adcAcqTime32,
-		.rep = true,
-		.leftAdjust = true
-	};
-//	ADC_InitSingle(ADC0, &init_single);
-
+	int channelsCount = __builtin_popcount(pData->adcChannelsMask);
 	ADC_InitScan_TypeDef init_scan =
 	{
-		.reference = adcRef1V25,
-		.input = ADC_SCANCTRL_INPUTMASK_CH4 | ADC_SCANCTRL_INPUTMASK_CH5,
+		.reference = adcRef2V5,
+		.input = pData->adcChannelsMask << _ADC_SCANCTRL_INPUTMASK_SHIFT,
 		.resolution = adcRes12Bit,
 		.acqTime = adcAcqTime32,
 		.rep = false,
 		.leftAdjust = true,
 		.prsEnable = true,
-		.prsSel = adcPRSSELCh5
+		.prsSel = adcPRSSELCh0 + pData->uPrsChannel
 	};
 	ADC_InitScan(ADC0, &init_scan);
 
-	CMU_ClockEnable(cmuClock_TIMER3, true);
-	TIMER_Init_TypeDef timer_init = TIMER_INIT_DEFAULT;
-	timer_init.prescale = timerPrescale1024;
-//	timer_init.enable = false;
-	TIMER_TopSet(TIMER3, 48000);
-	TIMER_Init(TIMER3, &timer_init);
+	vConfigureTimer(pData->uSampleRate);
 
-	CMU_ClockEnable(cmuClock_PRS, true);
-	PRS_LevelSet(0, 1 << (5 + _PRS_SWLEVEL_CH0LEVEL_SHIFT));
-	PRS_SourceSignalSet(5, PRS_CH_CTRL_SOURCESEL_TIMER3, PRS_CH_CTRL_SIGSEL_TIMER0OF, prsEdgePos);
-//	ADC_Start(ADC0, adcStartSingle);
-//	for (;;)
-//	{
-//		while ((ADC0->STATUS & ADC_STATUS_SINGLEDV) == 0)
-//			;
-//		int res = ADC_DataSingleGet(ADC0);
-//		printf("ADC VDD: %dmV\n", (res*1250) >> 16);
-//	}
-//	ADC_Start(ADC0, adcStartScan);
+	vConfigurePrs(pData->uPrsChannel);
+	int n = 0;
+	int max_n = 31 - __builtin_clz(pData->adcChannelsMask);
+
+	char outstr[64];
+	int outIdx = 0;
+	while (n != max_n)
+	{
+		xSemaphoreTake(semADC, portMAX_DELAY);
+		n = (ADC0->STATUS & _ADC_STATUS_SCANDATASRC_MASK) >> _ADC_STATUS_SCANDATASRC_SHIFT;
+	}
 	for (;;)
 	{
-//		while ((ADC0->STATUS & ADC_STATUS_SCANDV) == 0)
-//			;
-		xSemaphoreTake(semADC, portMAX_DELAY);
-		int n1 = (ADC0->STATUS & _ADC_STATUS_SCANDATASRC_MASK) >> _ADC_STATUS_SCANDATASRC_SHIFT;
-		int res1 = ADC_DataScanGet(ADC0);
-
-//		while ((ADC0->STATUS & ADC_STATUS_SCANDV) == 0)
-//			;
-		xSemaphoreTake(semADC, portMAX_DELAY);
-		int n2 = (ADC0->STATUS & _ADC_STATUS_SCANDATASRC_MASK) >> _ADC_STATUS_SCANDATASRC_SHIFT;
-		int res2 = ADC_DataScanGet(ADC0);
-		printf("%d: %dmV , %d: %dmV\n", n1, (res1*1250) >> 16, n2, (res2*1250) >> 16);
+		BSP_LedToggle(0);
+		outIdx = 0;
+		for (int chIdx = 0; chIdx < channelsCount; chIdx++)
+		{
+			xSemaphoreTake(semADC, portMAX_DELAY);
+			n = (ADC0->STATUS & _ADC_STATUS_SCANDATASRC_MASK) >> _ADC_STATUS_SCANDATASRC_SHIFT;
+			int res = ADC_DataScanGet(ADC0);
+			outIdx += sprintf(&outstr[outIdx], "%d: %dmV ", n, iConvertAdcReading(res, &init_scan, 3300));
+		}
+		puts(outstr);
+//		printf("Minimum stack free: %lubytes\n", uxTaskGetStackHighWaterMark(NULL)*4);
 	}
 }
 
