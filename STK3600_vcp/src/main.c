@@ -40,10 +40,10 @@
 /* Structure with parameters for LedBlink */
 typedef struct
 {
-  /* Delay between blink of led */
-  portTickType delay;
-  /* Number of led */
-  int          ledNo;
+    /* Delay between blink of led */
+    portTickType delay;
+    /* Number of led */
+    int          ledNo;
 } LedTaskParams_t;
 
 
@@ -54,28 +54,30 @@ typedef struct
  *****************************************************************************/
 static void LedTask(void *pParameters)
 {
-	vTaskDelay(1000 / portTICK_RATE_MS);
+    vTaskDelay(1000 / portTICK_RATE_MS);
 
-  LedTaskParams_t     * pData = (LedTaskParams_t*) pParameters;
-  const portTickType delay = pData->delay;
+    LedTaskParams_t     * pData = (LedTaskParams_t*) pParameters;
+    const portTickType delay = pData->delay;
 
-  for (;;)
-  {
-    BSP_LedToggle(pData->ledNo);
-    vTaskDelay(delay);
-    printf("%s. FreeHeap: %d\n", pcTaskGetTaskName(NULL), xPortGetFreeHeapSize());
-  }
+    for (;;)
+    {
+        BSP_LedToggle(pData->ledNo);
+        vTaskDelay(delay);
+        printf("%s. FreeHeap: %d\n", pcTaskGetTaskName(NULL), xPortGetFreeHeapSize());
+    }
 }
 
 static void vEchoTask(void *pParameters)
 {
     char string[32];
+
     for (;;)
     {
         if (gets(string) != NULL)
         {
             puts(string);
         }
+
         vTaskDelay(100 / portTICK_RATE_MS);
     }
 }
@@ -85,49 +87,49 @@ static void vEchoTask(void *pParameters)
  *****************************************************************************/
 int main( void )
 {
-	CHIP_Init();
-  /* If first word of user data page is non-zero, enable eA Profiler trace */
-  BSP_TraceProfilerSetup();
+    CHIP_Init();
+    /* If first word of user data page is non-zero, enable eA Profiler trace */
+    BSP_TraceProfilerSetup();
 
-  CMU_ClockSelectSet( cmuClock_HF, cmuSelect_HFXO );
-  CMU_OscillatorEnable(cmuOsc_LFXO, true, false);
+    CMU_ClockSelectSet( cmuClock_HF, cmuSelect_HFXO );
+    CMU_OscillatorEnable(cmuOsc_LFXO, true, false);
 
-  /* Initialize LCD driver */
-  SegmentLCD_Init(false);
-  SegmentLCD_Write("usbcomp");
-  SegmentLCD_Symbol(LCD_SYMBOL_GECKO, true);
+    /* Initialize LCD driver */
+    SegmentLCD_Init(false);
+    SegmentLCD_Write("usbcomp");
+    SegmentLCD_Symbol(LCD_SYMBOL_GECKO, true);
 
-  /* Initialize LED driver */
-  BSP_LedsInit();
+    /* Initialize LED driver */
+    BSP_LedsInit();
 
-   /* Initialize SLEEP driver, no calbacks are used */
-   SLEEP_Init(NULL, NULL);
- #if (configSLEEP_MODE < 3)
-   /* do not let to sleep deeper than define */
-   SLEEP_SleepBlockBegin((SLEEP_EnergyMode_t)(configSLEEP_MODE+1));
- #endif
+    /* Initialize SLEEP driver, no calbacks are used */
+    SLEEP_Init(NULL, NULL);
+#if (configSLEEP_MODE < 3)
+    /* do not let to sleep deeper than define */
+    SLEEP_SleepBlockBegin((SLEEP_EnergyMode_t)(configSLEEP_MODE + 1));
+#endif
 
-   /* Parameters value for taks*/
-   static LedTaskParams_t parametersToTask1 = { 1000 / portTICK_RATE_MS, 0 };
-   static LedTaskParams_t parametersToTask2 = { 500 / portTICK_RATE_MS, 1 };
+    /* Parameters value for taks*/
+    static LedTaskParams_t parametersToTask1 = { 1000 / portTICK_RATE_MS, 0 };
+    static LedTaskParams_t parametersToTask2 = { 500 / portTICK_RATE_MS, 1 };
 
-   static AdcTaskParams_t parametersToAdc =
-   {
-		   .adcChannelsMask = 0x32,
-		   .uPrsChannel = 5,
-		   .uSampleRate = 1,
-		   .uTimer = 3
-   };
+    static AdcTaskParams_t parametersToAdc =
+    {
+        .adcChannelsMask = 0x32,
+        .uPrsChannel = 5,
+        .uSampleRate = 1,
+        .uTimer = 3
+    };
 
-   /*Create two task for blinking leds*/
-   xTaskCreate( UsbCDCTask, "UsbCDC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+    /*Create two task for blinking leds*/
+    xTaskCreate( UsbCDCTask, "UsbCDC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 //   xTaskCreate( LedTask, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
 //   xTaskCreate( LedTask, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
-   xTaskCreate( vAdcTask, "ADC", STACK_SIZE_FOR_TASK, &parametersToAdc, TASK_PRIORITY + 1, NULL);
-   xTaskCreate( vDacTask, "DAC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
-   xTaskCreate( vEchoTask, "echo", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+    xTaskCreate( vAdcTask, "ADC", STACK_SIZE_FOR_TASK, &parametersToAdc, TASK_PRIORITY + 1, NULL);
+    xTaskCreate( vDacTask, "DAC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+    xTaskCreate( vEchoTask, "echo", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 
-   NVIC_SetPriority(USB_IRQn, 7);
-   NVIC_SetPriority(ADC0_IRQn, 7);
-   vTaskStartScheduler();
+    NVIC_SetPriority(USB_IRQn, 7);
+    NVIC_SetPriority(ADC0_IRQn, 7);
+    vTaskStartScheduler();
 }

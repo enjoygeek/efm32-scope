@@ -60,24 +60,24 @@ static uint8_t RxByte( void );
  *****************************************************************************/
 int BSP_BccDeInit( void )
 {
-  /* Reset counters */
-  rxByteCount = 0xFFFFFFFFUL;
-  txByteCount = 0xFFFFFFFFUL;
+    /* Reset counters */
+    rxByteCount = 0xFFFFFFFFUL;
+    txByteCount = 0xFFFFFFFFUL;
 
-  BSP_BccPinsEnable( false );
+    BSP_BccPinsEnable( false );
 
 #if defined( BSP_BCC_LEUART )
-  /* Reset LEUART */
-  LEUART_Reset( BSP_BCC_LEUART );
+    /* Reset LEUART */
+    LEUART_Reset( BSP_BCC_LEUART );
 #else
-  /* Reset USART */
-  USART_Reset( BSP_BCC_USART );
+    /* Reset USART */
+    USART_Reset( BSP_BCC_USART );
 #endif
 
-  /* Disable clock */
-  CMU_ClockEnable( BSP_BCC_CLK, false );
+    /* Disable clock */
+    CMU_ClockEnable( BSP_BCC_CLK, false );
 
-  return BSP_STATUS_OK;
+    return BSP_STATUS_OK;
 }
 
 /**************************************************************************//**
@@ -89,42 +89,42 @@ int BSP_BccDeInit( void )
 int BSP_BccInit( void )
 {
 #if defined( BSP_BCC_LEUART )
-  LEUART_Init_TypeDef leuartInit = LEUART_INIT_DEFAULT;
+    LEUART_Init_TypeDef leuartInit = LEUART_INIT_DEFAULT;
 #else
-  USART_InitAsync_TypeDef usartInit = USART_INITASYNC_DEFAULT;
+    USART_InitAsync_TypeDef usartInit = USART_INITASYNC_DEFAULT;
 #endif
 
-  rxByteCount = 0;
-  txByteCount = 0;
+    rxByteCount = 0;
+    txByteCount = 0;
 
-  /* Enable High Frequency Peripherals */
-  CMU_ClockEnable(cmuClock_HFPER, true);
+    /* Enable High Frequency Peripherals */
+    CMU_ClockEnable(cmuClock_HFPER, true);
 
-  /* Enable clocks to GPIO */
-  CMU_ClockEnable(cmuClock_GPIO, true);
+    /* Enable clocks to GPIO */
+    CMU_ClockEnable(cmuClock_GPIO, true);
 
-  /* Enable UART clock */
-  CMU_ClockEnable( BSP_BCC_CLK, true );
+    /* Enable UART clock */
+    CMU_ClockEnable( BSP_BCC_CLK, true );
 
 #if defined( BSP_BCC_LEUART )
-  /* Enable CORE LE clock in order to access LE modules */
-  CMU_ClockEnable(cmuClock_CORELE, true);
+    /* Enable CORE LE clock in order to access LE modules */
+    CMU_ClockEnable(cmuClock_CORELE, true);
 
-  /* Select CORE LE clock for LE modules */
-  CMU_ClockSelectSet( cmuClock_LFB, cmuSelect_CORELEDIV2 );
+    /* Select CORE LE clock for LE modules */
+    CMU_ClockSelectSet( cmuClock_LFB, cmuSelect_CORELEDIV2 );
 
-   /* Initialize LEUART */
-   leuartInit.baudrate = 115200;
-   LEUART_Init( BSP_BCC_LEUART, &leuartInit );
+    /* Initialize LEUART */
+    leuartInit.baudrate = 115200;
+    LEUART_Init( BSP_BCC_LEUART, &leuartInit );
 #else
-  /* Initialize USART */
-  USART_InitAsync( BSP_BCC_USART, &usartInit );
+    /* Initialize USART */
+    USART_InitAsync( BSP_BCC_USART, &usartInit );
 #endif
 
-  /* Initialize UART pins */
-  BSP_BccPinsEnable( true );
+    /* Initialize UART pins */
+    BSP_BccPinsEnable( true );
 
-  return BSP_STATUS_OK;
+    return BSP_STATUS_OK;
 }
 
 /**************************************************************************//**
@@ -136,53 +136,57 @@ int BSP_BccInit( void )
  *****************************************************************************/
 bool BSP_BccPacketReceive( BCP_Packet *pkt )
 {
-  int i;
-  int length;
-  uint8_t *bptr;
+    int i;
+    int length;
+    uint8_t *bptr;
 
-  /* Setup a byte pointer to start of packet buffer */
-  bptr   = (uint8_t *) pkt;
+    /* Setup a byte pointer to start of packet buffer */
+    bptr   = (uint8_t *) pkt;
 
-  /* Receive packet magic */
-  *bptr++ = RxByte();
-  if (pkt->magic != BSP_BCP_MAGIC)
-  {
-     return false;
-  }
+    /* Receive packet magic */
+    *bptr++ = RxByte();
 
-  /* Receive packet type */
-  *bptr++ = RxByte();
-  if ( (pkt->type < BSP_BCP_FIRST) || (pkt->type > BSP_BCP_LAST) )
-  {
-     return false;
-  }
+    if (pkt->magic != BSP_BCP_MAGIC)
+    {
+        return false;
+    }
 
-  /* Receive packet length */
-  *bptr++ = RxByte();
-  if (pkt->payloadLength > BSP_BCP_PACKET_SIZE)
-  {
-     return false;
-  }
+    /* Receive packet type */
+    *bptr++ = RxByte();
+
+    if ( (pkt->type < BSP_BCP_FIRST) || (pkt->type > BSP_BCP_LAST) )
+    {
+        return false;
+    }
+
+    /* Receive packet length */
+    *bptr++ = RxByte();
+
+    if (pkt->payloadLength > BSP_BCP_PACKET_SIZE)
+    {
+        return false;
+    }
 
 #if ( BSP_BCP_VERSION == 2 )
-   /* Receive reserved byte */
-   *bptr++ = RxByte();
+    /* Receive reserved byte */
+    *bptr++ = RxByte();
 #endif
 
-  /* Receive packet data length field and sanity check it */
-  length  = pkt->payloadLength;
-  if (length > BSP_BCP_PACKET_SIZE)
-  {
-     length = BSP_BCP_PACKET_SIZE;
-  }
+    /* Receive packet data length field and sanity check it */
+    length  = pkt->payloadLength;
 
-  /* Receive packet payload */
-  for( i=0; i<length; i++ )
-  {
-     *bptr++ = RxByte();
-  }
+    if (length > BSP_BCP_PACKET_SIZE)
+    {
+        length = BSP_BCP_PACKET_SIZE;
+    }
 
-  return true;
+    /* Receive packet payload */
+    for( i = 0; i < length; i++ )
+    {
+        *bptr++ = RxByte();
+    }
+
+    return true;
 }
 
 /**************************************************************************//**
@@ -194,32 +198,32 @@ bool BSP_BccPacketReceive( BCP_Packet *pkt )
  *****************************************************************************/
 int BSP_BccPacketSend( BCP_Packet *pkt )
 {
-  int i;
+    int i;
 
-  /* Apply magic */
-  pkt->magic = BSP_BCP_MAGIC;
+    /* Apply magic */
+    pkt->magic = BSP_BCP_MAGIC;
 
-  /* Transmit packet magic */
-  TxByte( pkt->magic );
+    /* Transmit packet magic */
+    TxByte( pkt->magic );
 
-  /* Transmit packet type */
-  TxByte( pkt->type );
+    /* Transmit packet type */
+    TxByte( pkt->type );
 
-  /* Transmit packet length */
-  TxByte( pkt->payloadLength );
+    /* Transmit packet length */
+    TxByte( pkt->payloadLength );
 
 #if ( BSP_BCP_VERSION == 2 )
-  /* Transmit reserved byte */
-  TxByte( pkt->reserved );
+    /* Transmit reserved byte */
+    TxByte( pkt->reserved );
 #endif
 
-  /* Transmit packet payload */
-  for ( i=0; i<pkt->payloadLength; i++ )
-  {
-    TxByte( pkt->data[i] );
-  }
+    /* Transmit packet payload */
+    for ( i = 0; i < pkt->payloadLength; i++ )
+    {
+        TxByte( pkt->data[i] );
+    }
 
-  return BSP_STATUS_OK;
+    return BSP_STATUS_OK;
 }
 
 /**************************************************************************//**
@@ -229,73 +233,80 @@ int BSP_BccPacketSend( BCP_Packet *pkt )
  *****************************************************************************/
 void BSP_BccPinsEnable( bool enable )
 {
-  if (enable)
-  {
-    /* Configure GPIO pin for UART TX */
-    /* To avoid false start, configure output as high. */
-    GPIO_PinModeSet( BSP_BCC_TXPORT, BSP_BCC_TXPIN, gpioModePushPull, 1 );
+    if (enable)
+    {
+        /* Configure GPIO pin for UART TX */
+        /* To avoid false start, configure output as high. */
+        GPIO_PinModeSet( BSP_BCC_TXPORT, BSP_BCC_TXPIN, gpioModePushPull, 1 );
 
-    /* Configure GPIO pin for UART RX */
-    GPIO_PinModeSet( BSP_BCC_RXPORT, BSP_BCC_RXPIN, gpioModeInput, 1 );
+        /* Configure GPIO pin for UART RX */
+        GPIO_PinModeSet( BSP_BCC_RXPORT, BSP_BCC_RXPIN, gpioModeInput, 1 );
 
-    /* Enable the switch that enables UART communication. */
-    GPIO_PinModeSet( BSP_BCC_ENABLE_PORT, BSP_BCC_ENABLE_PIN, gpioModePushPull, 1 );
+        /* Enable the switch that enables UART communication. */
+        GPIO_PinModeSet( BSP_BCC_ENABLE_PORT, BSP_BCC_ENABLE_PIN, gpioModePushPull, 1 );
 
-    #if defined( BSP_BCC_LEUART )
-      BSP_BCC_LEUART->ROUTE |= LEUART_ROUTE_RXPEN | LEUART_ROUTE_TXPEN | BSP_BCC_LOCATION;
-    #else
-      BSP_BCC_USART->ROUTE |= USART_ROUTE_RXPEN | USART_ROUTE_TXPEN | BSP_BCC_LOCATION;
-    #endif
-  }
-  else
-  {
-    GPIO_PinModeSet( BSP_BCC_ENABLE_PORT, BSP_BCC_ENABLE_PIN, gpioModeDisabled, 0 );
+#if defined( BSP_BCC_LEUART )
+        BSP_BCC_LEUART->ROUTE |= LEUART_ROUTE_RXPEN | LEUART_ROUTE_TXPEN | BSP_BCC_LOCATION;
+#else
+        BSP_BCC_USART->ROUTE |= USART_ROUTE_RXPEN | USART_ROUTE_TXPEN | BSP_BCC_LOCATION;
+#endif
+    }
+    else
+    {
+        GPIO_PinModeSet( BSP_BCC_ENABLE_PORT, BSP_BCC_ENABLE_PIN, gpioModeDisabled, 0 );
 
-    #if defined( BSP_BCC_LEUART )
-      BSP_BCC_LEUART->ROUTE &= ~(LEUART_ROUTE_RXPEN | LEUART_ROUTE_TXPEN);
-    #else
-      BSP_BCC_USART->ROUTE &= ~(USART_ROUTE_RXPEN | USART_ROUTE_TXPEN);
-    #endif
+#if defined( BSP_BCC_LEUART )
+        BSP_BCC_LEUART->ROUTE &= ~(LEUART_ROUTE_RXPEN | LEUART_ROUTE_TXPEN);
+#else
+        BSP_BCC_USART->ROUTE &= ~(USART_ROUTE_RXPEN | USART_ROUTE_TXPEN);
+#endif
 
-    GPIO_PinModeSet( BSP_BCC_TXPORT, BSP_BCC_TXPIN, gpioModeDisabled, 0 );
+        GPIO_PinModeSet( BSP_BCC_TXPORT, BSP_BCC_TXPIN, gpioModeDisabled, 0 );
 
-    GPIO_PinModeSet( BSP_BCC_RXPORT, BSP_BCC_RXPIN, gpioModeDisabled, 0 );
-  }
+        GPIO_PinModeSet( BSP_BCC_RXPORT, BSP_BCC_RXPIN, gpioModeDisabled, 0 );
+    }
 }
 
 /** @cond DO_NOT_INCLUDE_WITH_DOXYGEN */
 
 static uint8_t RxByte( void )
 {
-  uint8_t byte;
+    uint8_t byte;
 
-  /* Poll RX data available flag and return a character when one is available */
+    /* Poll RX data available flag and return a character when one is available */
 
 #if defined( BSP_BCC_LEUART )
-  while (!(BSP_BCC_LEUART->IF & LEUART_IF_RXDATAV)) ;
-  byte = BSP_BCC_LEUART->RXDATA;
+
+    while (!(BSP_BCC_LEUART->IF & LEUART_IF_RXDATAV)) ;
+
+    byte = BSP_BCC_LEUART->RXDATA;
 #else
-  while (!(BSP_BCC_USART->STATUS & USART_STATUS_RXDATAV)) ;
-  byte = BSP_BCC_USART->RXDATA;
+
+    while (!(BSP_BCC_USART->STATUS & USART_STATUS_RXDATAV)) ;
+
+    byte = BSP_BCC_USART->RXDATA;
 #endif
 
-  rxByteCount++;
-  return byte;
+    rxByteCount++;
+    return byte;
 }
 
 static void TxByte( uint8_t data )
 {
-  /* Check TX buffer and allow for a pending transfer to complete */
+    /* Check TX buffer and allow for a pending transfer to complete */
 
 #if defined( BSP_BCC_LEUART )
-  while (!(BSP_BCC_LEUART->STATUS & LEUART_STATUS_TXBL)) ;
-  BSP_BCC_LEUART->TXDATA = (uint32_t) data;
+    while (!(BSP_BCC_LEUART->STATUS & LEUART_STATUS_TXBL)) ;
+
+    BSP_BCC_LEUART->TXDATA = (uint32_t) data;
 #else
-  while (!(BSP_BCC_USART->STATUS & USART_STATUS_TXBL)) ;
-  BSP_BCC_USART->TXDATA = (uint32_t) data;
+
+    while (!(BSP_BCC_USART->STATUS & USART_STATUS_TXBL)) ;
+
+    BSP_BCC_USART->TXDATA = (uint32_t) data;
 #endif
 
-  txByteCount++;
+    txByteCount++;
 }
 
 /** @endcond */

@@ -82,31 +82,31 @@ extern "C" {
 #endif
 
 /********************** Configuration of FreeRTOS ****************************/
-  
+
 /* Implement FreeRTOS configASSERT as emlib assert */
-#define configASSERT( x )       EFM_ASSERT( x ) 
+#define configASSERT( x )       EFM_ASSERT( x )
 
 /* Modes of operations of operation system*/
 #define configUSE_PREEMPTION       ( 1 )
 
 /* Energy saving modes */
 #define configUSE_TICKLESS_IDLE    ( 0 )
-/* Available options when configUSE_TICKLESS_IDLE set to 1 
+/* Available options when configUSE_TICKLESS_IDLE set to 1
  * or configUSE_SLEEP_MODE_IN_IDLE set to 1 :
  * 1 - EM1, 2 - EM2, 3 - EM3, timer in EM3 is not very accurate*/
 #define configSLEEP_MODE           ( 1 )
 /* Definition used only if configUSE_TICKLESS_IDLE == 0 */
 #define configUSE_SLEEP_MODE_IN_IDLE       ( 1 )
 
- 
+
 /* EM1 use systick as system clock*/
 /* EM2 use crystal 32768Hz and RTC Component as system clock
  * We use 2 times divider of this clock to reduce energy consumtion
  * You can also in this mode choose crystal oscillator to get more preccision in
  * time measurement or RC oscillator for more energy reduction.*/
-/* EM3 use 2kHz RC and BURTC Component as system clock*/ 
+/* EM3 use 2kHz RC and BURTC Component as system clock*/
 #if ( ( configSLEEP_MODE == 2 ) && ( configUSE_TICKLESS_IDLE == 1 || configUSE_SLEEP_MODE_IN_IDLE == 1 ) )
-/* Choose source of clock for RTC (system tick) 
+/* Choose source of clock for RTC (system tick)
  * if configCRYSTAL_IN_EM2 set to 1 then Crystal oscillator is used,
  * when 0 RC oscillator */
 #define configCRYSTAL_IN_EM2    ( 1 )
@@ -141,7 +141,7 @@ extern "C" {
 #define configQUEUE_REGISTRY_SIZE                 ( 10 )
 #define configUSE_QUEUE_SETS                      ( 0 )
 
-//#define configUSE_NEWLIB_REENTRANT				  ( 1 )
+//#define configUSE_NEWLIB_REENTRANT                  ( 1 )
 
 /* Hook function related definitions. */
 #define configUSE_TICK_HOOK                       ( 0 )
@@ -162,7 +162,7 @@ extern "C" {
 #define configTIMER_TASK_STACK_DEPTH              ( configMINIMAL_STACK_SIZE )
 
 /* Interrupt nesting behaviour configuration. */
-#define configKERNEL_INTERRUPT_PRIORITY           ( 255 ) 
+#define configKERNEL_INTERRUPT_PRIORITY           ( 255 )
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY      ( 191 ) /* equivalent to 0xa0, or priority 5. */
 
 /* Optional functions - most linkers will remove unused functions anyway. */
@@ -186,17 +186,17 @@ extern "C" {
 
 /* Defines used in energy modes */
 #if ( ( configSLEEP_MODE == 2 )  && ( ( configUSE_SLEEP_MODE_IN_IDLE == 1 ) || ( configUSE_TICKLESS_IDLE == 1 ) ) )
-        #define configSYSTICK_CLOCK_HZ    ( 16384 )
+#define configSYSTICK_CLOCK_HZ    ( 16384 )
 #endif
 
 #if ( ( configSLEEP_MODE == 3 )  && ( ( configUSE_SLEEP_MODE_IN_IDLE == 1 ) || ( configUSE_TICKLESS_IDLE == 1 ) ) )
-       #define configSYSTICK_CLOCK_HZ    ( 2000 )
+#define configSYSTICK_CLOCK_HZ    ( 2000 )
 #endif
-  
+
 #if ( ( configUSE_TICKLESS_IDLE == 0 ) && ( configUSE_SLEEP_MODE_IN_IDLE == 1 ) )
-#define configUSE_IDLE_HOOK  ( 1 ) 
+#define configUSE_IDLE_HOOK  ( 1 )
 #else
-#define configUSE_IDLE_HOOK  ( 0 ) 
+#define configUSE_IDLE_HOOK  ( 0 )
 #endif
 
 /*-----------------------------------------------------------*/

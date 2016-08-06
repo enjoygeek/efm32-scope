@@ -61,8 +61,8 @@ extern char _end;                 /**< Defined by the linker */
  *****************************************************************************/
 int _close(int file)
 {
-  (void) file;
-  return 0;
+    (void) file;
+    return 0;
 }
 
 /**************************************************************************//**
@@ -72,8 +72,9 @@ int _close(int file)
  *****************************************************************************/
 void _exit (int status)
 {
-  (void) status;
-  while (1) {}      /* Hang here forever... */
+    (void) status;
+
+    while (1) {}      /* Hang here forever... */
 }
 
 /**************************************************************************//**
@@ -91,9 +92,9 @@ void _exit (int status)
  *****************************************************************************/
 int _fstat(int file, struct stat *st)
 {
-  (void) file;
-  st->st_mode = S_IFCHR;
-  return 0;
+    (void) file;
+    st->st_mode = S_IFCHR;
+    return 0;
 }
 
 /**************************************************************************//**
@@ -101,7 +102,7 @@ int _fstat(int file, struct stat *st)
  *****************************************************************************/
 int _getpid(void)
 {
-  return 1;
+    return 1;
 }
 
 /**************************************************************************//**
@@ -116,8 +117,8 @@ int _getpid(void)
  *****************************************************************************/
 int _isatty(int file)
 {
-  (void) file;
-  return 1;
+    (void) file;
+    return 1;
 }
 
 /**************************************************************************//**
@@ -127,9 +128,9 @@ int _isatty(int file)
  *****************************************************************************/
 int _kill(int pid, int sig)
 {
-  (void)pid;
-  (void)sig;
-  return -1;
+    (void)pid;
+    (void)sig;
+    return -1;
 }
 
 /**************************************************************************//**
@@ -150,10 +151,10 @@ int _kill(int pid, int sig)
  *****************************************************************************/
 int _lseek(int file, int ptr, int dir)
 {
-  (void) file;
-  (void) ptr;
-  (void) dir;
-  return 0;
+    (void) file;
+    (void) ptr;
+    (void) dir;
+    return 0;
 }
 
 ///**************************************************************************//**
@@ -211,24 +212,26 @@ int _lseek(int file, int ptr, int dir)
  *****************************************************************************/
 caddr_t _sbrk(int incr)
 {
-  static char       *heap_end;
-  char              *prev_heap_end;
-  static const char heaperr[] = "Heap and stack collision\n";
+    static char       *heap_end;
+    char              *prev_heap_end;
+    static const char heaperr[] = "Heap and stack collision\n";
 
-  if (heap_end == 0)
-  {
-    heap_end = &_end;
-  }
+    if (heap_end == 0)
+    {
+        heap_end = &_end;
+    }
 
-  prev_heap_end = heap_end;
-  if ((heap_end + incr) > (char*) __get_MSP())
-  {
-    _write(fileno(stdout), heaperr, strlen(heaperr));
-    exit(1);
-  }
-  heap_end += incr;
+    prev_heap_end = heap_end;
 
-  return (caddr_t) prev_heap_end;
+    if ((heap_end + incr) > (char*) __get_MSP())
+    {
+        _write(fileno(stdout), heaperr, strlen(heaperr));
+        exit(1);
+    }
+
+    heap_end += incr;
+
+    return (caddr_t) prev_heap_end;
 }
 
 /**************************************************************************//**
@@ -300,13 +303,14 @@ _STD_BEGIN
  *****************************************************************************/
 static int TxBuf(uint8_t *buffer, int nbytes)
 {
-  int i;
+    int i;
 
-  for (i = 0; i < nbytes; i++)
-  {
-    RETARGET_WriteChar(*buffer++);
-  }
-  return nbytes;
+    for (i = 0; i < nbytes; i++)
+    {
+        RETARGET_WriteChar(*buffer++);
+    }
+
+    return nbytes;
 }
 
 /*
@@ -317,59 +321,60 @@ static int TxBuf(uint8_t *buffer, int nbytes)
 
 size_t __write(int handle, const unsigned char * buffer, size_t size)
 {
-  /* Remove the #if #endif pair to enable the implementation */
+    /* Remove the #if #endif pair to enable the implementation */
 
-  size_t nChars = 0;
+    size_t nChars = 0;
 
-  if (buffer == 0)
-  {
-    /*
-     * This means that we should flush internal buffers.  Since we
-     * don't we just return.  (Remember, "handle" == -1 means that all
-     * handles should be flushed.)
-     */
-    return 0;
-  }
+    if (buffer == 0)
+    {
+        /*
+         * This means that we should flush internal buffers.  Since we
+         * don't we just return.  (Remember, "handle" == -1 means that all
+         * handles should be flushed.)
+         */
+        return 0;
+    }
 
-  /* This template only writes to "standard out" and "standard err",
-   * for all other file handles it returns failure. */
-  if (handle != _LLIO_STDOUT && handle != _LLIO_STDERR)
-  {
-    return _LLIO_ERROR;
-  }
+    /* This template only writes to "standard out" and "standard err",
+     * for all other file handles it returns failure. */
+    if (handle != _LLIO_STDOUT && handle != _LLIO_STDERR)
+    {
+        return _LLIO_ERROR;
+    }
 
-  /* Hook into USART1 transmit function here */
-  if (TxBuf((uint8_t *) buffer, size) != size)
-    return _LLIO_ERROR;
-  else
-    nChars = size;
+    /* Hook into USART1 transmit function here */
+    if (TxBuf((uint8_t *) buffer, size) != size)
+    { return _LLIO_ERROR; }
+    else
+    { nChars = size; }
 
-  return nChars;
+    return nChars;
 }
 
 size_t __read(int handle, unsigned char * buffer, size_t size)
 {
-  /* Remove the #if #endif pair to enable the implementation */
-  int nChars = 0;
+    /* Remove the #if #endif pair to enable the implementation */
+    int nChars = 0;
 
-  /* This template only reads from "standard in", for all other file
-   * handles it returns failure. */
-  if (handle != _LLIO_STDIN)
-  {
-    return _LLIO_ERROR;
-  }
+    /* This template only reads from "standard in", for all other file
+     * handles it returns failure. */
+    if (handle != _LLIO_STDIN)
+    {
+        return _LLIO_ERROR;
+    }
 
-  for (/* Empty */; size > 0; --size)
-  {
-    int c = RETARGET_ReadChar();
-    if (c < 0)
-      break;
+    for (/* Empty */; size > 0; --size)
+    {
+        int c = RETARGET_ReadChar();
 
-    *buffer++ = c;
-    ++nChars;
-  }
+        if (c < 0)
+        { break; }
 
-  return nChars;
+        *buffer++ = c;
+        ++nChars;
+    }
+
+    return nChars;
 }
 
 _STD_END
@@ -381,12 +386,12 @@ _STD_END
 /* Pass each of these function straight to the USART */
 int __putchar(int ch)
 {
-  return(RETARGET_WriteChar(ch));
+    return(RETARGET_WriteChar(ch));
 }
 
 int __getchar(void)
 {
-  return(RETARGET_ReadChar());
+    return(RETARGET_ReadChar());
 }
 
 #endif /* defined( __CROSSWORKS_ARM ) */
@@ -408,7 +413,7 @@ int __getchar(void)
 
 struct __FILE
 {
-  int handle;
+    int handle;
 };
 
 /**Standard output stream*/
@@ -429,7 +434,7 @@ FILE __stdout;
  *****************************************************************************/
 int fputc(int ch, FILE *f)
 {
-  return(RETARGET_WriteChar(ch));
+    return(RETARGET_WriteChar(ch));
 }
 
 /**************************************************************************//**
@@ -444,7 +449,7 @@ int fputc(int ch, FILE *f)
  *****************************************************************************/
 int fgetc(FILE *f)
 {
-  return(RETARGET_ReadChar());
+    return(RETARGET_ReadChar());
 }
 
 /**************************************************************************//**
@@ -460,8 +465,8 @@ int fgetc(FILE *f)
  *****************************************************************************/
 int ferror(FILE *f)
 {
-  /* Your implementation of ferror */
-  return EOF;
+    /* Your implementation of ferror */
+    return EOF;
 }
 
 /**************************************************************************//**
@@ -473,7 +478,7 @@ int ferror(FILE *f)
  *****************************************************************************/
 void _ttywrch(int ch)
 {
-  RETARGET_WriteChar(ch);
+    RETARGET_WriteChar(ch);
 }
 
 /**************************************************************************//**
@@ -486,7 +491,8 @@ void _ttywrch(int ch)
  *****************************************************************************/
 void _sys_exit(int return_code)
 {
- label:  goto label; /* endless loop */
+label:
+    goto label; /* endless loop */
 }
 #endif /* defined( __CC_ARM ) */
 

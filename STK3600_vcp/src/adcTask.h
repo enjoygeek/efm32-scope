@@ -12,10 +12,10 @@
 
 typedef struct
 {
-	uint8_t adcChannelsMask;
-	unsigned uSampleRate;
-	unsigned uPrsChannel;
-	unsigned uTimer;
+    uint8_t adcChannelsMask;
+    unsigned uSampleRate;
+    unsigned uPrsChannel;
+    unsigned uTimer;
 } AdcTaskParams_t;
 
 extern void vAdcTask(void *pParameters);

@@ -36,14 +36,14 @@ extern "C" {
 
 //typedef struct
 //{
-//	SemaphoreHandle_t semRecv;
-//	SemaphoreHandle_t semTx;
+//  SemaphoreHandle_t semRecv;
+//  SemaphoreHandle_t semTx;
 //} CdcTaskParams_t;
 
 typedef struct
 {
-	char buf[127] __attribute__((aligned(4)));
-	int used_bytes;
+    char buf[127] __attribute__((aligned(4)));
+    int used_bytes;
 } Buffer;
 
 typedef Buffer* BufferPtr;
