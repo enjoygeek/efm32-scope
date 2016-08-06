@@ -67,7 +67,18 @@ static void LedTask(void *pParameters)
   }
 }
 
-
+static void vEchoTask(void *pParameters)
+{
+    char string[32];
+    for (;;)
+    {
+        if (gets(string) != NULL)
+        {
+            puts(string);
+        }
+        vTaskDelay(100 / portTICK_RATE_MS);
+    }
+}
 
 /**************************************************************************//**
  * @brief main - the entrypoint after reset.
@@ -114,6 +125,7 @@ int main( void )
 //   xTaskCreate( LedTask, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
    xTaskCreate( vAdcTask, "ADC", STACK_SIZE_FOR_TASK, &parametersToAdc, TASK_PRIORITY + 1, NULL);
    xTaskCreate( vDacTask, "DAC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+   xTaskCreate( vEchoTask, "echo", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 
    NVIC_SetPriority(USB_IRQn, 7);
    NVIC_SetPriority(ADC0_IRQn, 7);

@@ -20,17 +20,17 @@ C_SRC += $(SDK_PATH)/emlib/src/em_int.c \
 		 $(SDK_PATH)/emlib/src/em_adc.c \
 		 $(SDK_PATH)/emlib/src/em_dac.c \
 		 $(SDK_PATH)/emdrv/sleep/src/sleep.c
-		 
+
 C_SRC += $(SDK_PATH)/usb/src/em_usbd.c \
 		 $(SDK_PATH)/usb/src/em_usbdint.c \
 		 $(SDK_PATH)/usb/src/em_usbhal.c \
 		 $(SDK_PATH)/usb/src/em_usbdep.c \
 		 $(SDK_PATH)/usb/src/em_usbdch9.c \
 		 $(SDK_PATH)/usb/src/em_usbtimer.c \
-		 	 
+
 C_SRC += ./BSP/bsp_trace.c \
 		 ./BSP/bsp_stk_leds.c
-		 	 
+
 C_SRC += ./src/main.c \
 		 ./src/retargetio.c \
 		 ./src/descriptors.c \
@@ -44,7 +44,7 @@ FreeRTOS_Heapmode = 1
 C_SRC += $(wildcard $(SDK_PATH)/FreeRTOS/Source/*.c) \
 		 $(SDK_PATH)/FreeRTOS/Source/portable/GCC/ARM_CM3/port.c \
 		 $(SDK_PATH)/FreeRTOS/Source/portable/MemMang/heap_$(FreeRTOS_Heapmode).c
-		
+
 C_OBJS := $(C_SRC:.c=.o)
 S_OBJS := $(S_SRC:.s=.a)
 OBJS = $(C_OBJS) $(S_OBJS)
@@ -59,20 +59,23 @@ INCLUDE_DIRS = -I./src \
 			   -I$(SDK_PATH)/kits/EFM32LG_STK3600/config \
 			   -I$(SDK_PATH)/FreeRTOS/Source/include \
 			   -I$(SDK_PATH)/FreeRTOS/Source/portable/GCC/ARM_CM3
-			   
-#-I$(SDK_PATH)/kits/common/drivers \			   
-			   
+
+#-I$(SDK_PATH)/kits/common/drivers \
+
 CFLAGS := -g -gdwarf-2 -mcpu=cortex-m3 -mthumb '-DDEBUG_EFM_USER=1' '-DEFM32LG990F256=1' '-DDEBUG=1' -O0 -Wall -c -fmessage-length=0 -mno-sched-prolog -fno-builtin -ffunction-sections -fdata-sections -std=c11
 CFLAGS += $(INCLUDE_DIRS)
 
-%.o: %.c 
+%.o: %.c
 	@echo 'Building object: $(abspath $@)'
-	$(CC) $(CFLAGS) $^ -o $@ 
+	$(CC) $(CFLAGS) $^ -o $@
 
 %.a: %.s
 	@echo 'Building object: $(abspath $@)'
 	$(CC) $(CFLAGS) $^ -o $@
-	
+
+
+release: all
+
 # All Target
 all: $(EXECUTABLE).axf
 

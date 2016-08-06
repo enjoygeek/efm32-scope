@@ -167,58 +167,90 @@ static bool portOpen = false;
 
 char* gets(char*ptr)
 {
-	return ptr;
+    if (!portOpen)
+        return NULL;
+
+    if (uxQueueMessagesWaiting(fullRxQueue) == 0)
+      return NULL;
+
+    BSP_LedToggle(1);
+
+    BufferPtr pBuf;
+    xQueuePeek(fullRxQueue, &pBuf, portMAX_DELAY);
+
+    int bytes_remain = pBuf->used_bytes;
+    char* src = pBuf->buf;
+    char* dst = ptr;
+    while (bytes_remain--)
+    {
+        if (*src == '\n')
+            break;
+
+        *dst++=*src++;
+    }
+    *dst = '\0';
+
+    if (bytes_remain > 0)
+    {
+        memmove(pBuf->buf, &pBuf->buf[pBuf->used_bytes - bytes_remain], bytes_remain);
+        pBuf->used_bytes = bytes_remain;
+    }
+    else
+    SegmentLCD_Number(bytes_remain);
+    {
+        xQueueReceive(fullRxQueue, &pBuf, portMAX_DELAY);
+        xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);
+    }
+
+    return ptr;
 }
 
 int _read(int file, char *ptr, int len)
 {
-//  int rxCount = 0;
-//
-//  (void) file;
-//  if (!portOpen)
-//  {
-//	  return -1;
-//  }
-//  while (len > 0)
-//  {
-//	  SegmentLCD_Number(len);
-////	  printf("Read len: %d\n", len);
-//	  BufferPtr pBuf;
-//	  if (uxQueueMessagesWaiting(fullRxQueue) == 0)
-//		  return -1;
-//	  xQueuePeek(fullRxQueue, &pBuf, portMAX_DELAY);
-//	  if (pBuf->used_bytes == 0) //end of file
-//	  {
-//		  xQueueReceive(fullRxQueue, &pBuf, portMAX_DELAY);
-//		  xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);
-////		  break;
-//		  return -1;
-//	  }
-//	  if (pBuf->used_bytes <= len)
-//	  {
-//		  memcpy(ptr, pBuf->buf, pBuf->used_bytes);
-//		  ptr += pBuf->used_bytes;
-//		  rxCount += pBuf->used_bytes;
-//		  len -= pBuf->used_bytes;
-//		  xQueueReceive(fullRxQueue, &pBuf, portMAX_DELAY);
-//		  xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);
-//	  }
-//	  else
-//	  {
-//		  memcpy(ptr, pBuf->buf, len);
-//		  memmove(&pBuf->buf[0], &pBuf->buf[len], pBuf->used_bytes - len);
-//		  pBuf->used_bytes -= len;
-//		  return len;
-//	  }
-//  }
-//
-//  if (rxCount <= 0)
-//  {
-//    return -1;                        /* Error exit */
-//  }
-//
-//  return rxCount;
-	return 0;
+  int rxCount = 0;
+
+  (void) file;
+  if (!portOpen)
+  {
+	  return -1;
+  }
+  while (len > 0)
+  {
+	  BufferPtr pBuf;
+	  if (uxQueueMessagesWaiting(fullRxQueue) == 0)
+		  return -1;
+	  xQueuePeek(fullRxQueue, &pBuf, portMAX_DELAY);
+	  if (pBuf->used_bytes == 0) //end of file
+	  {
+		  xQueueReceive(fullRxQueue, &pBuf, portMAX_DELAY);
+		  xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);
+		  return -1;
+	  }
+	  if (pBuf->used_bytes <= len)
+	  {
+		  memcpy(ptr, pBuf->buf, pBuf->used_bytes);
+		  ptr += pBuf->used_bytes;
+		  rxCount += pBuf->used_bytes;
+		  len -= pBuf->used_bytes;
+		  xQueueReceive(fullRxQueue, &pBuf, portMAX_DELAY);
+		  xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);
+	  }
+	  else
+	  {
+		  memcpy(ptr, pBuf->buf, len);
+		  memmove(&pBuf->buf[0], &pBuf->buf[len], pBuf->used_bytes - len);
+		  pBuf->used_bytes -= len;
+		  return len;
+	  }
+  }
+
+  if (rxCount <= 0)
+  {
+    return -1;                        /* Error exit */
+  }
+
+  return rxCount;
+//	return 0;
 }
 
 static SemaphoreHandle_t semEpIn = NULL;
@@ -385,6 +417,7 @@ static int UsbDataReceived(USB_Status_TypeDef status,
 
   if ((status == USB_STATUS_OK) && (xferred > 0))
   {
+//      SegmentLCD_Number(xferred);
 	  BufferPtr pBuf;
 	  xQueueReceiveFromISR(emptyRxQueue, &pBuf, NULL);
 	  pBuf->used_bytes = xferred;
