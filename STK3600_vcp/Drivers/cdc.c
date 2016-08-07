@@ -168,10 +168,14 @@ static bool portOpen = false;
 char* gets(char*ptr)
 {
     if (!portOpen)
-    { return NULL; }
+    {
+         return NULL;
+    }
 
     if (uxQueueMessagesWaiting(fullRxQueue) == 0)
-    { return NULL; }
+    {
+         return NULL;
+    }
 
     BSP_LedToggle(1);
 
@@ -185,7 +189,9 @@ char* gets(char*ptr)
     while (bytes_remain--)
     {
         if (*src == '\n')
-        { break; }
+        {
+             break;
+        }
 
         *dst++ = *src++;
     }
@@ -198,12 +204,12 @@ char* gets(char*ptr)
         pBuf->used_bytes = bytes_remain;
     }
     else
-    { SegmentLCD_Number(bytes_remain); }
-
     {
-        xQueueReceive(fullRxQueue, &pBuf, portMAX_DELAY);
-        xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);
+         SegmentLCD_Number(bytes_remain);
     }
+
+    xQueueReceive(fullRxQueue, &pBuf, portMAX_DELAY);
+    xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);
 
     return ptr;
 }
@@ -224,7 +230,9 @@ int _read(int file, char *ptr, int len)
         BufferPtr pBuf;
 
         if (uxQueueMessagesWaiting(fullRxQueue) == 0)
-        { return -1; }
+        {
+             return -1;
+        }
 
         xQueuePeek(fullRxQueue, &pBuf, portMAX_DELAY);
 
@@ -245,21 +253,21 @@ int _read(int file, char *ptr, int len)
             xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);
         }
         else
-        { memcpy(ptr, pBuf->buf, len); }
-
-        memmove(&pBuf->buf[0], &pBuf->buf[len], pBuf->used_bytes - len);
-        pBuf->used_bytes -= len;
-        return len;
+        {
+            memcpy(ptr, pBuf->buf, len);
+            memmove(&pBuf->buf[0], &pBuf->buf[len], pBuf->used_bytes - len);
+            pBuf->used_bytes -= len;
+            return len;
+        }
     }
-}
 
-if (rxCount <= 0)
-{
-    return -1;                        /* Error exit */
-}
+    if (rxCount <= 0)
+    {
+        return -1;                        /* Error exit */
+    }
 
-return rxCount;
-//  return 0;
+    return rxCount;
+    //  return 0;
 }
 
 static SemaphoreHandle_t semEpIn = NULL;
