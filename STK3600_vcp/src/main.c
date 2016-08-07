@@ -123,9 +123,7 @@ int main( void )
 
     /*Create two task for blinking leds*/
     xTaskCreate( UsbCDCTask, "UsbCDC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
-//   xTaskCreate( LedTask, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
-//   xTaskCreate( LedTask, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
-    xTaskCreate( vAdcTask, "ADC", STACK_SIZE_FOR_TASK, &parametersToAdc, TASK_PRIORITY + 1, NULL);
+    xTaskCreate( vAdcTask, "ADC", STACK_SIZE_FOR_TASK + 100, &parametersToAdc, TASK_PRIORITY + 1, NULL);
     xTaskCreate( vDacTask, "DAC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
     xTaskCreate( vEchoTask, "echo", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 

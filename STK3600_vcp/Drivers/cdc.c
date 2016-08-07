@@ -203,10 +203,6 @@ char* gets(char*ptr)
         memmove(pBuf->buf, &pBuf->buf[pBuf->used_bytes - bytes_remain], bytes_remain);
         pBuf->used_bytes = bytes_remain;
     }
-    else
-    {
-         SegmentLCD_Number(bytes_remain);
-    }
 
     xQueueReceive(fullRxQueue, &pBuf, portMAX_DELAY);
     xQueueSendToBack(emptyRxQueue, &pBuf, portMAX_DELAY);

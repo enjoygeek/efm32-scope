@@ -13,12 +13,39 @@
 #include "em_dac.h"
 #include "em_prs.h"
 #include "em_timer.h"
+#include "em_dma.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
 
+typedef struct
+{
+    uint8_t validChannelsMask;
+    uint8_t validChannelsCount;
+    int Vdd_mV;
+    const ADC_InitScan_TypeDef* conf;
+    int readings[8];
+} AdcScanResults_t;
+
+void* pvResultFormater(const AdcScanResults_t *results, void* dst);
+
+
 static SemaphoreHandle_t semADC = NULL;
+static AdcScanResults_t scan_results;
+static ADC_InitScan_TypeDef init_scan =
+{
+    .reference = adcRef2V5,
+    .input = 0,
+    .resolution = adcRes12Bit,
+    .acqTime = adcAcqTime32,
+    .rep = false,
+    .leftAdjust = true,
+    .prsEnable = true,
+    .prsSel = 0
+};
+
+
 void ADC0_IRQHandler()
 {
     ADC_IntClear(ADC0, ADC_IFC_SCAN);
@@ -44,6 +71,29 @@ static void vConfigurePrs(unsigned uCh)
     PRS_LevelSet(0, 1 << (uCh + _PRS_SWLEVEL_CH0LEVEL_SHIFT));
     PRS_SourceSignalSet(uCh, PRS_CH_CTRL_SOURCESEL_TIMER3, PRS_CH_CTRL_SIGSEL_TIMER0OF, prsEdgePos);
 }
+
+static void vConfigureADC(const AdcTaskParams_t *pData)
+{
+    CMU_ClockEnable(cmuClock_ADC0, true);
+    ADC_Init_TypeDef init = ADC_INIT_DEFAULT;
+    init.warmUpMode = adcWarmupKeepADCWarm;
+    init.timebase = 0;
+    init.prescale = ADC_PrescaleCalc(32000, 0);
+    ADC_Init(ADC0, &init);
+
+    NVIC_EnableIRQ(ADC0_IRQn);
+    ADC_IntEnable(ADC0, ADC_IF_SCAN);
+
+    int channelsCount = __builtin_popcount(pData->adcChannelsMask);
+    init_scan.input = pData->adcChannelsMask << _ADC_SCANCTRL_INPUTMASK_SHIFT;
+    init_scan.prsSel = adcPRSSELCh0 + pData->uPrsChannel;
+
+    ADC_InitScan(ADC0, &init_scan);
+    scan_results.conf = &init_scan;
+    scan_results.validChannelsMask = pData->adcChannelsMask;
+    scan_results.validChannelsCount = channelsCount;
+    scan_results.Vdd_mV = 3300;
+};
 
 static int iConvertAdcReading(int reading, const ADC_InitScan_TypeDef *conf, const int Vdd_mV)
 {
@@ -79,67 +129,87 @@ static int iConvertAdcReading(int reading, const ADC_InitScan_TypeDef *conf, con
     return (reading * mult) >> 16;
 }
 
+void vUnpackMask(int mask, int* indices)
+{
+    for (int bitIdx = 0; bitIdx < 31; bitIdx++)
+    {
+        if (mask & (1 << bitIdx))
+        {
+            *indices++ = bitIdx;
+        }
+    }
+}
+
+void* pvResultFormater(const AdcScanResults_t *results, void* dst)
+{
+    int outIdx = 0;
+    char *buf = dst;
+
+    static int channelsNumbers[8];
+    static int prevChannelsMask = 0;
+
+    if (results->validChannelsMask != prevChannelsMask)
+    {
+        prevChannelsMask = results->validChannelsMask;
+        vUnpackMask(results->validChannelsMask, channelsNumbers);
+    }
+
+    for (int chIdx = 0; chIdx < results->validChannelsCount; chIdx++)
+    {
+        outIdx += sprintf(&buf[outIdx], "%d: %dmV ", channelsNumbers[chIdx], iConvertAdcReading(results->readings[chIdx], results->conf, results->Vdd_mV));
+    }
+    return dst;
+}
+
+
+bool synchronized = false;
+
+
 void vAdcTask(void *pParameters)
 {
     AdcTaskParams_t *pData = pParameters;
 
     semADC = xSemaphoreCreateBinary();
 
-    CMU_ClockEnable(cmuClock_ADC0, true);
-    ADC_Init_TypeDef init = ADC_INIT_DEFAULT;
-    init.warmUpMode = adcWarmupKeepADCWarm;
-    init.timebase = 0;
-    init.prescale = ADC_PrescaleCalc(32000, 0);
-    ADC_Init(ADC0, &init);
-
-    NVIC_EnableIRQ(ADC0_IRQn);
-    ADC_IntEnable(ADC0, ADC_IF_SCAN);
-
-
-    int channelsCount = __builtin_popcount(pData->adcChannelsMask);
-    ADC_InitScan_TypeDef init_scan =
-    {
-        .reference = adcRef2V5,
-        .input = pData->adcChannelsMask << _ADC_SCANCTRL_INPUTMASK_SHIFT,
-        .resolution = adcRes12Bit,
-        .acqTime = adcAcqTime32,
-        .rep = false,
-        .leftAdjust = true,
-        .prsEnable = true,
-        .prsSel = adcPRSSELCh0 + pData->uPrsChannel
-    };
-    ADC_InitScan(ADC0, &init_scan);
-
+    vConfigureADC(pData);
     vConfigureTimer(pData->uSampleRate);
-
     vConfigurePrs(pData->uPrsChannel);
-    int n = 0;
-    int max_n = 31 - __builtin_clz(pData->adcChannelsMask);
 
-    char outstr[64];
-    int outIdx = 0;
 
-    while (n != max_n)
-    {
-        xSemaphoreTake(semADC, portMAX_DELAY);
-        n = (ADC0->STATUS & _ADC_STATUS_SCANDATASRC_MASK) >> _ADC_STATUS_SCANDATASRC_SHIFT;
-    }
 
     for (;;)
     {
-        BSP_LedToggle(0);
-        outIdx = 0;
-
-        for (int chIdx = 0; chIdx < channelsCount; chIdx++)
+        if (!synchronized)
         {
-            xSemaphoreTake(semADC, portMAX_DELAY);
-            n = (ADC0->STATUS & _ADC_STATUS_SCANDATASRC_MASK) >> _ADC_STATUS_SCANDATASRC_SHIFT;
-            int res = ADC_DataScanGet(ADC0);
-            outIdx += sprintf(&outstr[outIdx], "%d: %dmV ", n, iConvertAdcReading(res, &init_scan, 3300));
+            int n = 0;
+            int max_n = 31 - __builtin_clz(scan_results.validChannelsMask);
+            while (n != max_n)
+            {
+                xSemaphoreTake(semADC, portMAX_DELAY);
+                n = (ADC0->STATUS & _ADC_STATUS_SCANDATASRC_MASK) >> _ADC_STATUS_SCANDATASRC_SHIFT;
+            }
+            synchronized = true;
         }
 
-        puts(outstr);
-//      printf("Minimum stack free: %lubytes\n", uxTaskGetStackHighWaterMark(NULL)*4);
+        BSP_LedToggle(0);
+
+        char channels[4] = {0};
+        for (int chIdx = 0; chIdx < scan_results.validChannelsCount; chIdx++)
+        {
+            xSemaphoreTake(semADC, portMAX_DELAY);
+            scan_results.readings[chIdx] = ADC_DataScanGet(ADC0);
+            channels[chIdx] = '0' + ((ADC0->STATUS & _ADC_STATUS_SCANDATASRC_MASK) >> _ADC_STATUS_SCANDATASRC_SHIFT);
+        }
+
+        if (synchronized)
+        {
+            char outstr[64];
+            pvResultFormater(&scan_results, outstr);
+            puts(outstr);
+        }
+
+//        SegmentLCD_Number(uxTaskGetStackHighWaterMark(NULL));
+        SegmentLCD_Write(channels);
     }
 }
 
@@ -151,7 +221,7 @@ void vDacTask(void *pParameters)
 
     init.reference = dacRefVDD;
     init.outMode = dacOutputPin;
-    init.prescale = DAC_PrescaleCalc(10000, 0);
+    init.prescale = DAC_PrescaleCalc(100, 0);
 
     DAC_Init(DAC0, &init);
 
