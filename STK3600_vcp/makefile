@@ -19,7 +19,9 @@ C_SRC += $(SDK_PATH)/emlib/src/em_int.c \
 		 $(SDK_PATH)/emlib/src/em_rtc.c \
 		 $(SDK_PATH)/emlib/src/em_adc.c \
 		 $(SDK_PATH)/emlib/src/em_dac.c \
-		 $(SDK_PATH)/emdrv/sleep/src/sleep.c
+		 $(SDK_PATH)/emlib/src/em_dma.c \
+		 $(SDK_PATH)/emdrv/sleep/src/sleep.c \
+		 $(SDK_PATH)/emdrv/dmadrv/src/dmadrv.c \
 
 C_SRC += $(SDK_PATH)/usb/src/em_usbd.c \
 		 $(SDK_PATH)/usb/src/em_usbdint.c \
@@ -52,10 +54,14 @@ OBJS = $(C_OBJS) $(S_OBJS)
 INCLUDE_DIRS = -I./src \
 			   -I$(SDK_PATH)/CMSIS/Include \
 			   -I$(SDK_PATH)/emlib/inc \
+			   -I$(SDK_PATH)/emdrv/common/inc \
+			   -I$(SDK_PATH)/emdrv/config \
 			   -I$(SDK_PATH)/emdrv/sleep/inc \
+			   -I$(SDK_PATH)/emdrv/dmadrv/inc \
 			   -I$(SDK_PATH)/usb/inc \
 			   -I$(SDK_PATH)/Device/SiliconLabs/EFM32LG/Include \
 			   -I$(SDK_PATH)/kits/common/bsp \
+			   -I$(SDK_PATH)/kits/common/drivers \
 			   -I$(SDK_PATH)/kits/EFM32LG_STK3600/config \
 			   -I$(SDK_PATH)/FreeRTOS/Source/include \
 			   -I$(SDK_PATH)/FreeRTOS/Source/portable/GCC/ARM_CM3
@@ -104,5 +110,9 @@ clean:
 	-$(RM) $(OBJS) $(EXECUTABLE).axf $(EXECUTABLE).bin $(EXECUTABLE).hex $(EXECUTABLE).map
 	-@echo ' '
 
-.PHONY: all clean dependents
+upload: $(EXECUTABLE).bin
+	@echo 'Uploading $(EXECUTABLE).bin'
+	minicom -D /dev/ttyACM0 -S upload.txt
+
+.PHONY: all clean dependents upload
 .SECONDARY:

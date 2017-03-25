@@ -46,7 +46,7 @@ typedef struct
     int          ledNo;
 } LedTaskParams_t;
 
-
+TaskHandle_t adcTask;
 
 /**************************************************************************//**
  * @brief Simple task which is blinking led
@@ -79,6 +79,8 @@ static void vEchoTask(void *pParameters)
         }
 
         vTaskDelay(100 / portTICK_RATE_MS);
+        SegmentLCD_Number(uxTaskGetStackHighWaterMark(adcTask));
+
     }
 }
 
@@ -123,11 +125,12 @@ int main( void )
 
     /*Create two task for blinking leds*/
     xTaskCreate( UsbCDCTask, "UsbCDC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
-    xTaskCreate( vAdcTask, "ADC", STACK_SIZE_FOR_TASK + 100, &parametersToAdc, TASK_PRIORITY + 1, NULL);
+    xTaskCreate( vAdcTask, "ADC", STACK_SIZE_FOR_TASK + 100, &parametersToAdc, TASK_PRIORITY + 1, &adcTask);
     xTaskCreate( vDacTask, "DAC", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
     xTaskCreate( vEchoTask, "echo", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 
     NVIC_SetPriority(USB_IRQn, 7);
     NVIC_SetPriority(ADC0_IRQn, 7);
+    NVIC_SetPriority(DMA_IRQn, 7);
     vTaskStartScheduler();
 }

@@ -1,0 +1,7 @@
+send u
+expect {
+Ready
+}
+! sx ./vcp.bin
+send b
+! killall minicom

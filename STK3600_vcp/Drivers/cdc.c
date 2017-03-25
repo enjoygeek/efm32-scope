@@ -160,7 +160,7 @@ static QueueHandle_t fullRxQueue = NULL;
 static QueueHandle_t emptyRxQueue = NULL;
 
 
-static bool portOpen = false;
+bool portOpen = false;
 
 /** @endcond */
 

@@ -7,7 +7,7 @@
 /* Silicon Laboratories, Inc. 2014                                  */
 MEMORY
 {
-	FLASH (rx) : ORIGIN = 0x0, LENGTH = 0x40000 /* 256k */
+	FLASH (rx) : ORIGIN = 0x4000, LENGTH = 0x40000-0x4000 /* 256k */
 	RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 0x8000 /* 32k */
 }
 
@@ -16,7 +16,7 @@ MEMORY
  * with other linker script that defines memory regions FLASH and RAM.
  * It references following symbols, which must be defined in code:
  *   Reset_Handler : Entry of reset handler
- * 
+ *
  * It defines following symbols, which code can use without definition:
  *   __exidx_start
  *   __exidx_end
@@ -69,7 +69,7 @@ SECTIONS
     KEEP(*(.eh_frame*))
   } > FLASH
 
-  .ARM.extab : 
+  .ARM.extab :
   {
     *(.ARM.extab* .gnu.linkonce.armextab.*)
   } > FLASH

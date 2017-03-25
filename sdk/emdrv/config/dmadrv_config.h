@@ -28,7 +28,7 @@
 /// DMADRV DMA interrupt priority configuration option.
 /// Set DMA interrupt priority. Range is 0..7, 0 is highest priority.
 #ifndef EMDRV_DMADRV_DMA_IRQ_PRIORITY
-#define EMDRV_DMADRV_DMA_IRQ_PRIORITY 4
+#define EMDRV_DMADRV_DMA_IRQ_PRIORITY 7 //4
 #endif
    
 /// DMADRV DMA channel priority configuration option.
