@@ -41,6 +41,7 @@ C_SRC += ./src/main.c \
 		 ./Drivers/cdc.c \
 		 ./Drivers/segmentlcd.c \
 		 ./Drivers/dmactrl.c \
+		 ../protocol/protocol.c \
 
 FreeRTOS_Heapmode = 1
 C_SRC += $(wildcard $(SDK_PATH)/FreeRTOS/Source/*.c) \
@@ -89,7 +90,7 @@ all: $(EXECUTABLE).axf
 $(EXECUTABLE).axf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GNU ARM C Linker'
-	arm-none-eabi-gcc -g -gdwarf-2 -mcpu=cortex-m3 -mthumb -T "STK3600_vcp.ld" -Xlinker --gc-sections -Xlinker -Map="$(EXECUTABLE).map" --specs=nano.specs -o $@ $(OBJS) -Wl,--start-group -lgcc -lc -lnosys -Wl,--end-group
+	$(CC) -g -gdwarf-2 -mcpu=cortex-m3 -mthumb -T "STK3600_vcp.ld" -Xlinker --gc-sections -Xlinker -Map="$(EXECUTABLE).map" --specs=nano.specs -o $@ $(OBJS) -Wl,--start-group -lgcc -lc -lnosys -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

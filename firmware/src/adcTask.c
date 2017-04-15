@@ -21,6 +21,9 @@
 #include "task.h"
 #include "semphr.h"
 
+#include "../../protocol/protocol.h"
+
+
 typedef struct
 {
     uint8_t validChannelsMask;
@@ -30,7 +33,7 @@ typedef struct
     int readings[8];
 } AdcScanResults_t __attribute__((aligned(16)));
 
-void* pvResultFormater(const AdcScanResults_t *results, void* dst);
+size_t pvResultFormater(const AdcScanResults_t *results, void* dst);
 
 
 static SemaphoreHandle_t semADC = NULL;
@@ -48,17 +51,14 @@ static ADC_InitScan_TypeDef init_scan =
 };
 
 bool synchronized = false;
-bool dma = true;
-
 
 void ADC0_IRQHandler()
 {
     ADC_IntClear(ADC0, ADC_IFC_SCAN);
     BaseType_t woken;
-    if (!dma || !synchronized)
+    if (!synchronized)
         xSemaphoreGiveFromISR(semADC, &woken);
     portYIELD_FROM_ISR(woken);
-    BSP_LedToggle(0);
 }
 
 
@@ -148,9 +148,9 @@ void vUnpackMask(int mask, int* indices)
     }
 }
 
-void* pvResultFormater(const AdcScanResults_t *results, void* dst)
+size_t pvResultFormater(const AdcScanResults_t *results, void* dst)
 {
-    int outIdx = 0;
+	size_t outIdx = 0;
     char *buf = dst;
 
     static int channelsNumbers[8];
@@ -166,24 +166,18 @@ void* pvResultFormater(const AdcScanResults_t *results, void* dst)
     {
         outIdx += sprintf(&buf[outIdx], "%d: %dmV ", channelsNumbers[chIdx], iConvertAdcReading(results->readings[chIdx], results->conf, results->Vdd_mV));
     }
-    return dst;
+    return outIdx;
 }
 
 
 
 static unsigned uDmaChannel;
 
-static bool symbol_gecko = false;
-
 bool vDmaCallback(unsigned int channel, unsigned int seqNumber, void *userParam)
 {
-//	SegmentLCD_LowerNumber(seqNumber*10 + channel);
-
     BaseType_t woken;
     xSemaphoreGiveFromISR(semADC, &woken);
     portYIELD_FROM_ISR(woken);
-//    SegmentLCD_Symbol(LCD_SYMBOL_GECKO, symbol_gecko);
-//    symbol_gecko = !symbol_gecko;
     BSP_LedToggle(1);
 	return true;
 }
@@ -203,17 +197,11 @@ void vAdcTask(void *pParameters)
     {
     	vTaskDelay(100);
     }
-//    vTaskDelay(20000);
-//	puts(__FUNCTION__);
-//    vTaskDelay(20000);
 	puts(__FUNCTION__);
 	printf("staring %s\n", __FUNCTION__);
     AdcTaskParams_t *pData = pParameters;
 
     semADC = xSemaphoreCreateBinary();
-
-
-//    vTaskDelay(10000);
 
     vConfigureDma();
     printf("DMA Channel %d allocated\n", uDmaChannel);
@@ -229,61 +217,33 @@ void vAdcTask(void *pParameters)
     {
         if (!synchronized)
         {
-//            int n = 0;
-//            int max_n = 31 - __builtin_clz(scan_results.validChannelsMask);
-//            while (n != max_n)
-//            {
-//                xSemaphoreTake(semADC, portMAX_DELAY);
-//                n = (ADC0->STATUS & _ADC_STATUS_SCANDATASRC_MASK) >> _ADC_STATUS_SCANDATASRC_SHIFT;
-//            }
             synchronized = true;
 
             printf("synchronized...\n");
-            if (dma)
-            {
-                xSemaphoreTake(semADC, 10);
-                xSemaphoreTake(semADC, 10);
-                printf("Disabling ADC irq");
-                ADC_IntDisable(ADC0, ADC_IF_SCAN);
-                NVIC_DisableIRQ(ADC0_IRQn);
-
-            }
+			xSemaphoreTake(semADC, 10);
+			xSemaphoreTake(semADC, 10);
+			printf("Disabling ADC irq");
+			ADC_IntDisable(ADC0, ADC_IF_SCAN);
+			NVIC_DisableIRQ(ADC0_IRQn);
         }
 
+		Ecode_t ret = DMADRV_PeripheralMemory(uDmaChannel, DMAREQ_ADC0_SCAN, &scan_results.readings[0], &(ADC0->SCANDATA),
+								true, scan_results.validChannelsCount, dmaDataSize4, vDmaCallback, NULL);
 
-
-        char channels[4] = {0};
-        if (dma)
-        {
-//            bool status = false;
-//            DMADRV_TransferActive(uDmaChannel, &status);
-//            if (!status)
-            {
-                Ecode_t ret = DMADRV_PeripheralMemory(uDmaChannel, DMAREQ_ADC0_SCAN, &scan_results.readings[0], &(ADC0->SCANDATA),
-                                        true, scan_results.validChannelsCount, dmaDataSize4, vDmaCallback, NULL);
-
-                xSemaphoreTake(semADC, portMAX_DELAY);
-            }
-        }
-        else
-        {
-            for (int chIdx = 0; chIdx < scan_results.validChannelsCount; chIdx++)
-            {
-                xSemaphoreTake(semADC, portMAX_DELAY);
-                scan_results.readings[chIdx] = ADC_DataScanGet(ADC0);
-                channels[chIdx] = '0' + ((ADC0->STATUS & _ADC_STATUS_SCANDATASRC_MASK) >> _ADC_STATUS_SCANDATASRC_SHIFT);
-            }
-        }
+		xSemaphoreTake(semADC, portMAX_DELAY);
 
         if (synchronized)
         {
             char outstr[64];
             pvResultFormater(&scan_results, outstr);
-            puts(outstr);
-        }
+//            puts(outstr);
 
-//        SegmentLCD_Number(uxTaskGetStackHighWaterMark(NULL));
-//        SegmentLCD_Write(channels);
+            static uint8_t buf[128];
+            size_t packet_len = pack_string(buf, sizeof(buf), outstr);
+            fwrite(buf, packet_len, 1, stdout);
+//            fwrite(outstr, strlen(outstr), 1, stdout);
+            fflush(stdout);
+        }
     }
 }
 
