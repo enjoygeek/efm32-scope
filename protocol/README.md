@@ -1,0 +1,1 @@
+Protocol for communication between scope and client

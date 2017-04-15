@@ -1,0 +1,1 @@
+Firmware for scope itself

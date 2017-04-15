@@ -1,0 +1,1 @@
+Client software to receive data from scope, analyze, visualize and store it.
