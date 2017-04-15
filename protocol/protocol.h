@@ -8,10 +8,13 @@
 #ifndef PROTOCOL_PROTOCOL_H_
 #define PROTOCOL_PROTOCOL_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 struct protocol_header;
-
 size_t pack_string(void* buf, size_t buflen, const char* str);
 size_t unpack_string(const void* buf, char* str);
 
@@ -38,5 +41,9 @@ enum types_enum {
 	READINGS,
 	CONFIG
 };
+
+#ifdef __cplusplus
+} //extern "C" {
+#endif
 
 #endif /* PROTOCOL_PROTOCOL_H_ */

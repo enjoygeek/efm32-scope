@@ -18,14 +18,16 @@ INCLUDE_DIRS = -I./
 CFLAGS := -g -gdwarf-2 -O0 -Wall -c -fmessage-length=0 -std=c11
 CFLAGS += $(INCLUDE_DIRS)
 
+CPPFLAGS := -g -gdwarf-2 -O0 -Wall -c
+CPPLAGS += $(INCLUDE_DIRS)
+
 %.o: %.c
 	@echo 'Building object: $(abspath $@)'
 	$(CC) $(CFLAGS) $^ -o $@
 	
 %.obj: %.cpp
 	@echo 'Building object: $(abspath $@)'
-	$(CPP) $(CFLAGS) $^ -o $@
-
+	$(CPP) $(CPPFLAGS) $^ -o $@
 
 %.a: %.s
 	@echo 'Building object: $(abspath $@)'
@@ -38,9 +40,9 @@ release: all
 all: $(EXECUTABLE)
 
 # Tool invocations
-just_print: $(OBJS) $(USER_OBJS)
+$(EXECUTABLE): $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
-	$(CC) -g -gdwarf-2 -o $@ $(OBJS)
+	$(CPP) -lstdc++ -o $@ $(OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -5,9 +5,25 @@
  *      Author: bulashevich
  */
 
-#include <stdio.h>
-void main()
+#include <iostream>
+#include "../protocol/protocol.h"
+
+using namespace std;
+
+class StreamProcessor
 {
-	printf("Hello world!\n");
+public:
+	StreamProcessor(istream &is, ostream &os);
+	void process();
+protected:
+	void virtual process_chunk() = 0;
+};
+
+int main()
+{
+	cout << "Hello, streamed processor!" << endl;
+//	StreamProcessor proc(cin, cout);
+//	proc.process();
+	return 0;
 }
 
