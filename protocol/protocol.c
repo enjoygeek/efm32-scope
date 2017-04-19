@@ -18,3 +18,9 @@ size_t pack_string(void* buf, size_t buflen, const char* str)
 	memcpy(&data[2], str, len);
 	return len;
 }
+
+size_t unpack_string(const void* buf, char* str)
+{
+	str[0] = '\0';
+	return 0;
+}

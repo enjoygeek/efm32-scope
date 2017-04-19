@@ -1,16 +1,16 @@
 RM := rm -rf
 CC := gcc
 CPP := g++
-EXECUTABLE := just_print
 
-C_SRC += ../protocol/protocol.c \
-#		 ./just_print.c
-		 
-CPP_SRC = ./just_print.cpp
+C_SRC = ../protocol.c
+
+TESTS = pack_unpack.cpp pack_unpack2.cpp
 
 C_OBJS := $(C_SRC:.c=.o)
-CPP_OBJS := $(CPP_SRC:.cpp=.obj)
+CPP_OBJS := $(TESTS:.cpp=.obj)
 OBJS = $(C_OBJS) $(CPP_OBJS)
+EXECUTABLES := $(TESTS:.cpp=)
+INTERMEDIATE := $(TESTS:.cpp=.out)
 
 INCLUDE_DIRS = -I./
 
@@ -23,7 +23,8 @@ CPPLAGS += $(INCLUDE_DIRS)
 %.o: %.c
 	@echo 'Building object: $(abspath $@)'
 	$(CC) $(CFLAGS) $^ -o $@
-	
+
+
 %.obj: %.cpp
 	@echo 'Building object: $(abspath $@)'
 	$(CPP) $(CPPFLAGS) $^ -o $@
@@ -31,20 +32,22 @@ CPPLAGS += $(INCLUDE_DIRS)
 release: all
 
 # All Target
-all: $(EXECUTABLE)
+all: $(INTERMEDIATE)
+#all: pack_unpack 
 
 # Tool invocations
-$(EXECUTABLE): $(OBJS) $(USER_OBJS)
+%.out: %.cpp $(C_OBJS)
 	@echo 'Building target: $@'
-	$(CPP) -lstdc++ -o $@ $(OBJS)
+	$(CPP) -lstdc++ -o $@ $^ 
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-
 # Other Targets
 clean:
-	-$(RM) $(OBJS) $(EXECUTABLE)
+	-$(RM) $(OBJS) $(EXECUTABLES) $(INTERMEDIATE)
 	-@echo ' '
 
 .PHONY: all clean dependents
 .SECONDARY:
+
+ 

@@ -14,7 +14,8 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdlib.h>
-struct protocol_header;
+
+int parse_header(const void* buf, int *type, size_t *packet_len, size_t *payload_len);
 size_t pack_string(void* buf, size_t buflen, const char* str);
 size_t unpack_string(const void* buf, char* str);
 
