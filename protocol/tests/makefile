@@ -4,7 +4,7 @@ CPP := g++
 
 C_SRC = ../protocol.c
 
-TESTS = pack_unpack.cpp pack_unpack2.cpp
+TESTS = pack_unpack.cpp packet_sizes.cpp
 
 C_OBJS := $(C_SRC:.c=.o)
 CPP_OBJS := $(TESTS:.cpp=.obj)
@@ -17,7 +17,7 @@ INCLUDE_DIRS = -I./
 CFLAGS := -g -gdwarf-2 -O0 -Wall -c -fmessage-length=0 -std=c11
 CFLAGS += $(INCLUDE_DIRS)
 
-CPPFLAGS := -g -gdwarf-2 -O0 -Wall -c
+CPPFLAGS := -g -gdwarf-2 -O0 -Wall -c -std=c++11
 CPPLAGS += $(INCLUDE_DIRS)
 
 %.o: %.c
@@ -36,7 +36,7 @@ all: $(INTERMEDIATE)
 #all: pack_unpack 
 
 # Tool invocations
-%.out: %.cpp $(C_OBJS)
+%.out: %.obj $(C_OBJS)
 	@echo 'Building target: $@'
 	$(CPP) -lstdc++ -o $@ $^ 
 	@echo 'Finished building target: $@'

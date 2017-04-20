@@ -15,12 +15,16 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 
-int parse_header(const void* buf, int *type, size_t *packet_len, size_t *payload_len);
+size_t parse_header(const void* buf, int *type, size_t *payload_offset, size_t *payload_len);
+
+/**
+ *
+ */
 size_t pack_string(void* buf, size_t buflen, const char* str);
 size_t unpack_string(const void* buf, char* str);
 
-size_t pack_readings(void* buf, size_t buflen, const uint16_t* src);
-size_t unpack_readings(const void* buf, size_t buflen, uint16_t* dst);
+size_t pack_int16array(void* buf, size_t buflen, const int16_t* src, size_t len);
+size_t unpack_int16array(const void* buf, int16_t* dst);
 
 struct configuration
 {
