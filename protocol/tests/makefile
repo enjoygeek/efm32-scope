@@ -4,13 +4,15 @@ CPP := g++
 
 C_SRC = ../protocol.c
 
-TESTS = pack_unpack.cpp packet_sizes.cpp
+TESTS = catch_main.cpp catch_unpack.cpp
+EXECUTABLE = catch_tests
 
 C_OBJS := $(C_SRC:.c=.o)
 CPP_OBJS := $(TESTS:.cpp=.obj)
 OBJS = $(C_OBJS) $(CPP_OBJS)
-EXECUTABLES := $(TESTS:.cpp=)
-INTERMEDIATE := $(TESTS:.cpp=.out)
+
+CATCH_HEADER = ./catch.hpp
+CATCH_PCH = $(CATCH_HEADER).gch
 
 INCLUDE_DIRS = -I./
 
@@ -25,29 +27,30 @@ CPPLAGS += $(INCLUDE_DIRS)
 	$(CC) $(CFLAGS) $^ -o $@
 
 
-%.obj: %.cpp
+%.obj: %.cpp $(CATCH_PCH)
 	@echo 'Building object: $(abspath $@)'
-	$(CPP) $(CPPFLAGS) $^ -o $@
+	$(CPP) $(CPPFLAGS) $(filter %.cpp,$^) -o $@
+
 
 release: all
 
 # All Target
-all: $(INTERMEDIATE)
-#all: pack_unpack 
+all: $(EXECUTABLE)
 
 # Tool invocations
-%.out: %.obj $(C_OBJS)
+$(EXECUTABLE): $(OBJS)
 	@echo 'Building target: $@'
 	$(CPP) -lstdc++ -o $@ $^ 
 	@echo 'Finished building target: $@'
 	@echo ' '
 
+$(CATCH_PCH): $(CATCH_HEADER)
+	$(CPP) $^ -o $@
+
 # Other Targets
 clean:
-	-$(RM) $(OBJS) $(EXECUTABLES) $(INTERMEDIATE)
+	-$(RM) $(OBJS) $(EXECUTABLE) $(CATCH_PCH)
 	-@echo ' '
 
 .PHONY: all clean dependents
 .SECONDARY:
-
- 
