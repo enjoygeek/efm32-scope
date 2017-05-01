@@ -4,7 +4,7 @@ CPP := g++
 
 C_SRC = ../protocol.c
 
-TESTS = catch_main.cpp catch_unpack.cpp
+TESTS = catch_main.cpp test_strings.cpp
 EXECUTABLE = catch_tests
 
 C_OBJS := $(C_SRC:.c=.o)
@@ -16,10 +16,10 @@ CATCH_PCH = $(CATCH_HEADER).gch
 
 INCLUDE_DIRS = -I./
 
-CFLAGS := -g -gdwarf-2 -O0 -Wall -c -fmessage-length=0 -std=c11
+CFLAGS := -O2 -Wall -c -fmessage-length=0 -std=c11
 CFLAGS += $(INCLUDE_DIRS)
 
-CPPFLAGS := -g -gdwarf-2 -O0 -Wall -c -std=c++11
+CPPFLAGS := -O2 -Wall -c -std=c++11
 CPPLAGS += $(INCLUDE_DIRS)
 
 %.o: %.c

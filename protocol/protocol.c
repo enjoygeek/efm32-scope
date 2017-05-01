@@ -17,13 +17,17 @@
  */
 size_t pack_string(void* buf, size_t buflen, const char* str)
 {
-	size_t len = strlen(str);
+	if (buflen < 2)
+		return 0;
+
 	uint8_t *data = buf;
+	size_t len = strlen(str);
+	len = len > buflen - 2 ? buflen - 2 : len;
 
 	data[0] = TEXT;
 	data[1] = len;
 	memcpy(&data[2], str, len);
-	return parse_header(buf, NULL, NULL, NULL);
+	return parse_header(buf, NULL);
 }
 
 /**
@@ -35,10 +39,9 @@ size_t pack_string(void* buf, size_t buflen, const char* str)
 size_t unpack_string(const void* buf, char* str)
 {
 	const uint8_t *data = buf;
-	size_t offset;
-	size_t len;
-	size_t ret = parse_header(buf, NULL, &offset, &len);
-	memcpy(str, &data[offset], len);
+	struct packet_info info;
+	size_t ret = parse_header(buf, &info);
+	memcpy(str, &data[info.header_len], info.payload_len);
 	return ret;
 }
 
@@ -61,20 +64,20 @@ size_t unpack_int16array(const void* buf, int16_t* dst)
 /**
  *
  * @param[in] buf input buffer
- * @param[out] type type of packet
- * @param[out] payload_len size of unpacked payload data in bytes
+ * @param[out] info structure describing packet
  * @return size of packet in bytes
  */
-size_t parse_header(const void* buf, int *type, size_t *payload_offset, size_t *payload_len)
+size_t parse_header(const void* buf, struct packet_info *info)
 {
 	const uint8_t *data = buf;
 	const size_t offset = 2;
 	const size_t len = data[1];
-	if (type)
-		*type = data[0];
-	if (payload_len)
-		*payload_len = len;
-	if (payload_offset)
-		*payload_offset = offset;
-	return len + offset;
+	if (info != NULL)
+	{
+		info->type = data[0];
+		info->payload_len = len;
+		info->header_len = offset;
+		info->packet_len = offset + len;
+	}
+	return offset + len;
 }

@@ -15,7 +15,22 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 
-size_t parse_header(const void* buf, int *type, size_t *payload_offset, size_t *payload_len);
+enum payload_types {
+	UNDEFINED = -1,
+	TEXT = 0,
+	READINGS,
+	CONFIG
+};
+
+struct packet_info
+{
+	enum payload_types type;
+	size_t payload_len;
+	size_t packet_len;
+	size_t header_len;
+};
+
+size_t parse_header(const void* buf, struct packet_info *info);
 
 /**
  *
@@ -41,11 +56,6 @@ struct protocol_header
 	uint8_t payload[0];
 };
 
-enum types_enum {
-	TEXT = 0,
-	READINGS,
-	CONFIG
-};
 
 #ifdef __cplusplus
 } //extern "C" {
