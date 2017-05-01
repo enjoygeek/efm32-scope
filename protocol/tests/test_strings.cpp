@@ -39,7 +39,6 @@ protected:
 	std::array<uint8_t, 5000> buf;
 	std::array<char, 5000> unpacked;
 
-	void test_string(const std::string input, size_t buffer_limit = 0);
 	void test_parse_header(enum payload_types type) const;
 };
 
@@ -47,36 +46,6 @@ TestStringFixture::TestStringFixture()
 {
 	buf.fill(guard_value);
 	unpacked.fill(guard_value);
-}
-
-void TestStringFixture::test_string(const std::string input, size_t buffer_limit)
-{
-	size_t buffer_size = buffer_limit > 0 ? buffer_limit : buf.size();
-
-	size_t output_offset = pack_string(buf.data(), buffer_size, input.data());
-	size_t input_offset = unpack_string(buf.data(), unpacked.data());
-
-	REQUIRE(output_offset <= buffer_size);
-	REQUIRE(output_offset == input_offset);
-	REQUIRE(get_dirty_length(buf.begin(), buf.end(), guard_value) == output_offset);
-
-	SECTION("Parse")
-	{
-		struct packet_info info;
-		size_t packet_len = parse_header(buf.data(), &info);
-
-		REQUIRE(packet_len == info.packet_len);
-		REQUIRE(info.type == TEXT);
-		REQUIRE(info.packet_len == output_offset);
-
-		SECTION("Comparing unpacked with input")
-		{
-			std::string output(unpacked.data(), info.payload_len);
-			REQUIRE(get_dirty_length(unpacked.begin(), unpacked.end(), guard_value) == output.length());
-			REQUIRE(info.payload_len == output.length());
-			REQUIRE(input == output);
-		}
-	}
 }
 
 void TestStringFixture::test_parse_header(enum payload_types type) const
